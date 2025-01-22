@@ -1,0 +1,18 @@
+{
+  "name": "@klaus-liebler/vite-single-file",
+  "version": "1.0.0",
+  "main": "vite-single-file.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Klaus Liebler",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@types/node": "^22.10.7",
+    "esbuild-minify-templates": "^0.11.0",
+    "rollup": "^4.31.0",
+    "vite": "^6.0.11"
+  }
+}
