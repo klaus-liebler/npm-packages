@@ -2,6 +2,7 @@ import tts from "@google-cloud/text-to-speech"
 import { google } from "@google-cloud/text-to-speech/build/protos/protos";
 import * as fs from "node:fs"
 import path from "node:path";
+import { writeFileCreateDirLazy } from "./utils";
 
 /*
   var boardSounds = c.b.board_settings?.speech as Array<FilenameAndSsml> | undefined;
@@ -21,17 +22,19 @@ export async function convertTextToSpeech(sentences: Array<FilenameAndSsml>, tar
   const client = new tts.TextToSpeechClient();
   // Construct the request
   for (const e of sentences) {
-    if (fs.existsSync(path.join(targetDirectory, e.name + ".mp3"))) {
+    const mp3path = path.join(targetDirectory, e.name + ".mp3");
+    if (fs.existsSync(mp3path)) {
       continue;
     }
-    console.log(`Fetching from Google TTS: ${e.ssml}`);
+    console.info(`As ${mp3path} does not exist, I try to get it from Google TTS: ${e.ssml}`);
     const request: google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
       input: { ssml: e.ssml },
       voice: { name: 'de-DE-Neural2-F', languageCode: "de-DE" },
       audioConfig: { audioEncoding: google.cloud.texttospeech.v1.AudioEncoding.MP3, sampleRateHertz: 22050 },
     };
     const [response] = await client.synthesizeSpeech(request);
-    fs.writeFileSync(path.join(targetDirectory, e.name + ".mp3"), response.audioContent as Uint8Array);
+    writeFileCreateDirLazy(mp3path, response.audioContent as Uint8Array);
+    console.info(`File ${mp3path} successfully created and written`);
   }
 }
 

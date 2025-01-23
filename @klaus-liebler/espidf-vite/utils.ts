@@ -1,38 +1,19 @@
 import path from "node:path";
 import fs from "node:fs";
-import { IStringBuilder } from "../../usersettings/typescript/utils/usersettings_base";
+import {SearchReplace, X02 } from "@klaus-liebler/commons";
+
+export function mac_12char(mac:number){return X02(mac, 12);}
+export function mac_6char(mac:number){return mac_12char(mac).slice(6);}
 
 export interface IBoardInfo{
-  mac:number,
-  mac_6char:string,
-  mac_12char:string,
+  mac:number,//as Primärschlüssel
+  //alle folgenden können nicht aus Board ausgelesen werden
   board_name:string,
   board_version:number,
   first_connected_dt:number,
   last_connected_dt:number,
-  last_connected_com_port:string,
-  mcu_name:string,
   board_settings:any,
-  board_type_settings:any,
-  encryption_key_set:boolean,
-}
-
-export class SearchReplace{
-  constructor(public search:string, public replaceFilePath:string){}
-}
-
-
-export function X02(num: number|bigint, len = 2) { let str = num.toString(16); return "0".repeat(len - str.length) + str; }
-
-export function bigint2array(mc:number){
-  var ret =new Uint8Array(6);
-  ret[5]=Number((mc) & 0xFF)
-  ret[4]=Number((mc >> 8) & 0xFF);
-  ret[3]=Number((mc >> 16) & 0xFF);
-  ret[2]=Number((mc >> 24) & 0xFF);
-  ret[1]=Number((mc >> 32) & 0xFF);
-  ret[0]=Number((mc >> 40) & 0xFF);
-  return ret;
+  flash_encryption_key_burned_and_activated:boolean,
 }
 
 export function writeFileCreateDirLazy(file: fs.PathOrFileDescriptor, data: string | NodeJS.ArrayBufferView, callback?: fs.NoParamCallback) {
@@ -43,10 +24,6 @@ export function writeFileCreateDirLazy(file: fs.PathOrFileDescriptor, data: stri
     fs.writeFileSync(file, data);
   }
 }
-
-
-
-
 
 export function CopyBoardSpecificFiles(targetDir:string, pathsWithDynamicFiles:Array<string>, namesToSearchFor:Array<string>) {
     pathsWithDynamicFiles.forEach((p)=>{
@@ -65,25 +42,7 @@ export function createWriteStreamCreateDirLazy(pathLike: fs.PathLike): fs.WriteS
   return fs.createWriteStream(pathLike);
 }
 
-export function strInterpolator(str, ...values:any[]) {
-  const values_flat=values.flat(1);
-  return str.replace(/\${(.*?)}/g, (_match, p1) => {
-    if (p1.includes(".")) {
-      const keyPath = p1.split(".");
-      let currentObj = values_flat;
-      for (let i = 0; i < keyPath.length; i++) {
-        const key = keyPath[i];
-        if (currentObj[key] !== void 0 && typeof currentObj[key] === "object") {
-          currentObj = currentObj[key];
-        } else {
-          return currentObj[key] !== void 0 ? currentObj[key] : "";
-        }
-      }
-    } else {
-      return values_flat[p1] !== void 0 ? values_flat[p1] : "";
-    }
-  });
-}
+
 
 export default function templateSpecial(fillInFilePath:string, templatePath: string, defaultSearch:string, furtherSearchReplace:SearchReplace[]) {
   const file = fs.readFileSync(fillInFilePath, {encoding:"utf-8"});
@@ -100,26 +59,3 @@ export default function templateSpecial(fillInFilePath:string, templatePath: str
 
 };
 
-export class StringBuilderImpl implements IStringBuilder {
-
-  constructor(initialValue: string | null = null) {
-    if (initialValue) {
-      this.AppendLine(initialValue);
-    }
-  }
-
-  public get Code() {
-    return this.code;
-  }
-  private code = "";
-  public AppendLine(line: string): void {
-    this.code += line + "\r\n";
-  }
-
-  public Clear(initialValue: string | null = null) {
-    this.code = "";
-    if (initialValue) {
-      this.AppendLine(initialValue);
-    }
-  }
-}

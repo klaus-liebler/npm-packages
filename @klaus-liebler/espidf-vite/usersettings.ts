@@ -1,6 +1,6 @@
 import path from "path";
-import { EscapeToVariableName } from "../../usersettings/typescript/utils/usersettings_base";
-import { StringBuilderImpl, writeFileCreateDirLazy } from "./utils";
+import {EscapeToVariableName, StringBuilderImpl } from "@klaus-liebler/commons";
+import {writeFileCreateDirLazy } from "./utils";
 
 import fs from "node:fs";
 import * as idf from "./espidf";

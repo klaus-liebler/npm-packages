@@ -2,15 +2,18 @@
 import path from "node:path";
 import fs from "node:fs";
 import { Context } from "./context";
-import { IBoardInfo } from "./utils";
+import { X02 } from "@klaus-liebler/commons";
+import { mac_12char } from "./utils";
 
 
 
 //Dies hier sind ausschließlich relative Pfade bezogen auf die in gulpfile_config.ts definierten Pfade
 export const SOUNDS_DE_SUBDIR = path.join("sounds","de")
+export const CURRENT_BOARD_SUBDIR = "current_board"
 export const WEB_SUBDIR = "web"
 export const FLASH_KEY_SUBDIR ="flash_encryption"
 export const FLASH_KEY_FILENAME= "key.bin"
+export const INFO_JSON_FILENAME = "info.json"
 
 export const CERTIFICATES_SUBDIR =  "certificates"
 export const ESP32_CERT_PEM_CRT_FILE = "esp32.pem.crt"
@@ -31,7 +34,8 @@ export class Paths{
     get WEB() {return path.join(this.c.c.idfProjectDirectory, "web");}
     get TESTSERVER(){return path.join(this.c.c.idfProjectDirectory, "testserver");}
     get BOARDS(){return this.c.c.boardsDirectory;}//Board Specific generated files, die einmalig  generiert werden
-    get CURRENT_BOARD(){return path.join(this.c.c.idfProjectDirectory, "current_board");}//Board Specific files copied from BOARDS for current board  
+    get CURRENT_BOARD(){return path.join(this.c.c.idfProjectDirectory, CURRENT_BOARD_SUBDIR);}//Board Specific files copied from BOARDS for current board  
+    //es kann beim current_board kein Unterverzeichnis mit der individuellen Board-MAC-Adresse geben, weil dann der Pfad aller Dateien dynamisch wäre
     get BUILD() {return path.join(this.c.c.idfProjectDirectory, "build");}
     get SOUNDS() {return path.join(this.c.c.idfProjectDirectory, "sounds");}//Common sounds
     get SOUNDS_DE() {return path.join(this.SOUNDS, "de");}//Common german voice sounds
@@ -73,16 +77,16 @@ export class Paths{
     get FLATBUFFERS_SCHEMA_PATH() {return path.join(this.c.c.idfComponentWebmanangerDirectory, "flatbuffers");}
     
     public boardSpecificPath(subdir?:string, filename?:string){
-      return Paths.boardSpecificPath(this.BOARDS, this.c.b, subdir, filename)
+      return Paths.boardSpecificPath(this.BOARDS, this.c.b.mac, subdir, filename)
     }
 
-    public static boardSpecificPath(BOARDS:string, b:IBoardInfo, subdir?:string, filename?:string){
+    public static boardSpecificPath(BOARDS:string, mac:number, subdir?:string, filename?:string){
       if(!subdir)
-        return path.join(BOARDS, b.mac+"_"+b.mac_12char);
+        return path.join(BOARDS, mac+"_"+mac_12char(mac));
       else if(!filename)
-        return path.join(BOARDS, b.mac+"_"+b.mac_12char, subdir);
+        return path.join(BOARDS, mac+"_"+mac_12char(mac), subdir);
       else
-        return path.join(BOARDS, b.mac+"_"+b.mac_12char, subdir, filename);
+        return path.join(BOARDS, mac+"_"+mac_12char(mac), subdir, filename);
     }
 
     

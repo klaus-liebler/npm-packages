@@ -1,67 +1,91 @@
-import { IBoardInfo, X02 } from "./utils";
+import { IBoardInfo} from "./utils";
 import * as esp from "./esp32"
 import * as idf from "./espidf"
 import * as P from "./paths";
 import fs from "node:fs";
 import path from "node:path";
-export class ContextConfig{
-  constructor(public readonly idfProjectDirectory:string, public readonly idfComponentWebmanangerDirectory:string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion){}
+export class ContextConfig {
+  constructor(public readonly idfProjectDirectory: string, public readonly idfComponentWebmanangerDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
 }
-export class Context{
-  
-  private constructor(public c:ContextConfig, public b: IBoardInfo, public i: idf.IIdfProjectInfo|null, public f:idf.IFlasherConfiguration|null){}
-  private static instance:Context|null;
-  public static async get(config:ContextConfig, updateWithCurrentlyConnectedBoard:boolean=false):Promise<Context>{
-    var b:IBoardInfo|null=null;
-    const jsonInfo=path.join(config.idfProjectDirectory, "current_board", "info.json")
-    if(!updateWithCurrentlyConnectedBoard && fs.existsSync(jsonInfo)){
-       b=JSON.parse(fs.readFileSync(jsonInfo).toString()) as IBoardInfo;
-    }
-    if(updateWithCurrentlyConnectedBoard || !b){
-      
-      var esp32 = await esp.GetESP32Object();
-      if (!esp32) {
-        throw new Error("No connected board found");
+export class Context {
+
+  public setFlashEncryptionKeyBurnedAndActivated(){
+    this.b.flash_encryption_key_burned_and_activated=true;
+    const boardInfoJsonPath = P.Paths.boardSpecificPath(this.c.boardsDirectory, this.b.mac, P.INFO_JSON_FILENAME);
+    fs.writeFileSync(boardInfoJsonPath, JSON.stringify(this.b))
+  }
+
+  private constructor(public c: ContextConfig, public b: IBoardInfo, public i: idf.IIdfProjectInfo | null, public f: idf.IFlasherConfiguration | null) { }
+  private static instance: Context | null;
+  public static async get(config: ContextConfig, updateWithCurrentlyConnectedBoard: boolean = false): Promise<Context> {
+    var mac: number = 0;
+    const currentBoardInfoJsonPath = path.join(config.idfProjectDirectory, P.CURRENT_BOARD_SUBDIR, P.INFO_JSON_FILENAME)
+
+    if (!updateWithCurrentlyConnectedBoard && Context.instance) {
+      //wenn ich nix aktualisieren soll und der Context bereits erzeugt wurde -->ggf. "i" und "f" nachtragen und dann raus hier
+      if (!Context.instance.i) {
+        Context.instance.i = idf.GetProjectDescription(config.idfProjectDirectory);
       }
-      console.log(`Found ${esp32.chipName} on ${esp32.comPort.path} with mac ${esp32.macAsHexString} (decimal: ${esp32.macAsNumber}) and encryption key '${esp32.hasEncryptionKey?"already written":"not written"}'`)
-      //await db.updateDatabase(esp32, config.boardDatabaseFile, config.defaultBoardTypeId);
-      b={
-        board_name:config.defaultBoardName,
-        board_version:config.defaultBoardVersion,
-        encryption_key_set:esp32.hasEncryptionKey,
-        board_settings:{},
-        board_type_settings:{},
-        first_connected_dt:Date.now(),
-        last_connected_com_port:esp32.comPort.path,
-        last_connected_dt:Date.now(),
-        mac:esp32.macAsNumber,
-        mac_12char: X02(esp32.macAsNumber, 12),
-        mac_6char:X02(esp32.macAsNumber, 12).slice(6),
-        mcu_name:esp32.chipName
-      }
-      fs.writeFileSync(jsonInfo, JSON.stringify(b))
-      fs.writeFileSync(P.Paths.boardSpecificPath(config.boardsDirectory, b, "info.json"), JSON.stringify(b))
-      
-    }
-    if(!Context.instance){
-      const i = idf.GetProjectDescription(config.idfProjectDirectory);
-      const f = idf.GetFlashArgs(config.idfProjectDirectory)
-      Context.instance=new Context(config, b, i, f);
-    }else{
-      if(!Context.instance.i){
-        Context.instance.i=idf.GetProjectDescription(config.idfProjectDirectory);
-      }
-      if(!Context.instance.f){
+      if (!Context.instance.f) {
         Context.instance.f = idf.GetFlashArgs(config.idfProjectDirectory)
       }
+      return Context.instance;
     }
-    //sanity check
-    const p = new P.Paths(Context.instance);
-    if(Context.instance.b.encryption_key_set && !p.existsBoardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)) {
-      throw new Error("Inconsistency between database and file system: encryption key set in database but there is no flash key file on file system ");
-    }else if(!Context.instance.b.encryption_key_set && p.existsBoardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)){
-      throw new Error("Inconsistency between database and file system: encryption key not set in database but there is a key file on file system ");
+
+
+    if (updateWithCurrentlyConnectedBoard) {
+      var esp32 = await esp.GetESP32Object();
+      if (!esp32) {
+        throw new Error(`Updating mac from ESP32 was not successful.`);
+      }
+      console.log(`Found ${esp32.chipName} on ${esp32.comPort.path} with mac ${esp32.macAsHexString} (decimal: ${esp32.macAsNumber}) and encryption key '${esp32.hasEncryptionKey ? "already written" : "not written"}'`)
+      mac = esp32.macAsNumber;
+    } else {
+      if (fs.existsSync(currentBoardInfoJsonPath)) {
+        mac = (JSON.parse(fs.readFileSync(currentBoardInfoJsonPath).toString()) as IBoardInfo).mac;
+      }
+      else {
+        console.warn(`There is no info.json in path ${currentBoardInfoJsonPath}. Try to get mac from ESP32 directly`);
+        var esp32 = await esp.GetESP32Object();
+        if (!esp32) {
+          throw new Error(`There was no info.json in path ${currentBoardInfoJsonPath}. Try to get mac from ESP32 directly was not successful.`);
+        }
+        console.log(`Found ${esp32.chipName} on ${esp32.comPort.path} with mac ${esp32.macAsHexString} (decimal: ${esp32.macAsNumber}) and encryption key '${esp32.hasEncryptionKey ? "already written" : "not written"}'`)
+        mac = esp32.macAsNumber;
+      }
     }
+    if (!mac)
+      throw new Error("Invalid mac address");
+
+    var boardPath = P.Paths.boardSpecificPath(config.boardsDirectory, mac);
+    fs.mkdirSync(boardPath, { recursive: true });
+
+    const boardInfoJsonPath = P.Paths.boardSpecificPath(config.boardsDirectory, mac, P.INFO_JSON_FILENAME);
+    var boardInfo: IBoardInfo;
+    if (!fs.existsSync(boardInfoJsonPath)) {
+      console.info(`There was no info.json in path ${boardInfoJsonPath}. Create it with default settings`);
+      boardInfo = {
+        board_name: config.defaultBoardName,
+        board_version: config.defaultBoardVersion,
+        board_settings: {},
+        first_connected_dt: Date.now(),
+        last_connected_dt: Date.now(),
+        mac: mac,
+        flash_encryption_key_burned_and_activated:false,
+      }
+      fs.writeFileSync(boardInfoJsonPath, JSON.stringify(boardInfo))
+
+    } else {
+      boardInfo = JSON.parse(fs.readFileSync(boardInfoJsonPath).toString()) as IBoardInfo
+      if (updateWithCurrentlyConnectedBoard) {
+        boardInfo.last_connected_dt = Date.now();
+        fs.writeFileSync(boardInfoJsonPath, JSON.stringify(boardInfo))
+      }
+    }
+    //Ich habe jetzt das zentrale Verzeichnis und eine Board-Info-Datei, aber keinen Context. Baue den jetzt neu auf
+    const i = idf.GetProjectDescription(config.idfProjectDirectory);
+    const f = idf.GetFlashArgs(config.idfProjectDirectory)
+    Context.instance = new Context(config, boardInfo, i, f);
     return Context.instance!;
   }
 }

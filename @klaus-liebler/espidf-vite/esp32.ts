@@ -1,7 +1,8 @@
 import { SerialPort, SlipDecoder, SlipEncoder } from "serialport";
 import { SetOptions } from '@serialport/bindings-interface'
 import { autoDetect } from '@serialport/bindings-cpp'
-import { X02 } from "./utils";
+import { } from "./utils";
+import { X02 } from "@klaus-liebler/commons";
 
 export abstract class ESP32Type {
     constructor(protected loader:EspLoader){}
@@ -356,7 +357,7 @@ export async function GetESP32ObjectFromSpecificPort(comPort: string): Promise<E
     return res;
 }
 
-interface KLPortResult{
+export interface IPortInfo{
     friendlyName:string;
     locationId:string;
     manufacturer:string;
@@ -367,8 +368,19 @@ interface KLPortResult{
     vendorId:string;
 }
 
+export async function FindProbablePort():Promise<IPortInfo|null> {
+    const portInfo = await autoDetect().list() as Array<IPortInfo>;
+    for (var pi of portInfo) {
+        if(pi.productId!="1001" || pi.vendorId!="303A"){
+            continue;
+        }
+        return pi;
+    }
+    return null;
+}
+
 export async function GetESP32Object(): Promise<ESP32Type|null> {
-    const portInfo = await autoDetect().list() as Array<KLPortResult>;
+    const portInfo = await autoDetect().list() as Array<IPortInfo>;
     let ret:ESP32Type|null;
     for (var pi of portInfo) {
         if(pi.productId!="1001" || pi.vendorId!="303A"){

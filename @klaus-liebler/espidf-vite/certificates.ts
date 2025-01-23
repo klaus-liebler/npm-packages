@@ -44,8 +44,11 @@ function createUniversalAuthExtensions(dnsHostname: string, authorityKeyIdentifi
 		},{
 			name: 'subjectAltName',
 			altNames: [{
-				type: 2, // 2 is DNS type
-				value: dnsHostname
+					type: 2, // 2 is DNS type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
+					value: dnsHostname
+				},{
+					type: 7,  // 7 is IP type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
+					ip: "192.168.4.1" //this is the address when the board is in AP mode, see https://github.com/digitalbazaar/forge/issues/714
 				}
 			]
 		},{

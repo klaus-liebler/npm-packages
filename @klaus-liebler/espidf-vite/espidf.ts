@@ -3,6 +3,8 @@ import * as P from "./paths";
 import fs from "node:fs";
 import { Context } from './context';
 import path from 'node:path';
+import { mac_12char } from './utils';
+import { FindProbablePort } from './esp32';
 
 
 
@@ -20,7 +22,7 @@ export async function createRandomFlashEncryptionKeyLazily(c:Context) {
   const p = new P.Paths(c);
   
   if (p.existsBoardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)) {
-    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${c.b.mac_6char} has already been created`);
+    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created`);
     return;
   }
   p.createBoardSpecificPathLazy(P.FLASH_KEY_SUBDIR);
@@ -30,14 +32,18 @@ export async function createRandomFlashEncryptionKeyLazily(c:Context) {
 
 export async function burnFlashEncryptionKeyToAndActivateEncryptedFlash(c:Context) {
   const p = new P.Paths(c);
-  if(c.b.encryption_key_set){
-    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${c.b.mac_12char} has already been burned to efuse`);
+  if(c.b.flash_encryption_key_burned_and_activated){
+    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been burned to efuse`);
     return;
   }
-   
-  espefuse(`--port ${c.b.last_connected_com_port} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`);
-  espefuse(`--port ${c.b.last_connected_com_port} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`);
+  const pi=await FindProbablePort();
+  if(!pi){
+    throw Error("No connected Board found")
+  }
+  espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`);
+  espefuse(`--port ${pi.path} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`);
   console.log('Random Flash Encryption Key successfully burned to EFUSE; encryption of flash activated!');
+  c.setFlashEncryptionKeyBurnedAndActivated();
   
 }
 
@@ -67,8 +73,12 @@ export async function encryptFirmware(c:Context) {
 
 export async function flashEncryptedFirmware(c:Context) {
   const p = new P.Paths(c);
+  const pi=await FindProbablePort();
+  if(!pi){
+    throw Error("No connected Board found")
+  }
   [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata, c.f!.otadata].forEach(s=>{
-      const cmd=`--port ${c.b.last_connected_com_port} write_flash --flash_size keep ${s.offset} ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))}`;
+      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))}`;
       esptool(cmd, false)
     })
   console.log('Flash finished');
@@ -76,7 +86,11 @@ export async function flashEncryptedFirmware(c:Context) {
 
 export async function flashFirmware(c:Context) {
   const p = new P.Paths(c);
-  exec_in_idf_terminal(`idf.py -p ${c.b.last_connected_com_port} flash`, c.c.idfProjectDirectory);
+  const pi=await FindProbablePort();
+  if(!pi){
+    throw Error("No connected Board found")
+  }
+  exec_in_idf_terminal(`idf.py -p ${pi.path} flash`, c.c.idfProjectDirectory);
   console.log('Flash-Prozess abgeschlossen!');
 }
 

@@ -8,9 +8,6 @@ const prettyFormat = ["%h", "%H", "%s", "%f", "%b", "%at", "%ct", "%an", "%ae", 
 
 export async function getLastCommit(suppressStdOut: boolean) {
     const cmd = `git log -1 --pretty=format:"${prettyFormat.join(splitCharacter)}" && git rev-parse --abbrev-ref HEAD && git tag --contains HEAD`
-
-
-    console.info(`Executing ${cmd}`)
     const stdout = execSync(cmd, {
         env: process.env
     }).toString();

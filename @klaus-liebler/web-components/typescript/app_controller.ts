@@ -92,7 +92,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     const bufferLength = 4 + m.data.byteLength;
     const arrayBuffer = new ArrayBuffer(bufferLength);
     const dataView = new DataView(arrayBuffer);
-    dataView.setUint32(0, m.namespace);
+    dataView.setUint32(0, m.namespace, true);
     const newData = new Uint8Array(arrayBuffer);
     newData.set(m.data, 4);
     
@@ -104,7 +104,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
       this.modalSpinnerTimeoutHandle = <number>(<unknown>setTimeout(() => this.modalSpinnerTimeout(), m.maxLockingTimeMs)) //casting to make TypeScript happy
     }
 
-    console.info(`sendWebsocketMessage --> OPEN --> send to server`)
+    console.info(`sendWebsocketMessage for namespace ${m.namespace} --> OPEN --> send to server`)
     try {
       this.socket!.send(newData)
     } catch (error: any) {
@@ -118,7 +118,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
 
   private onWebsocketData(arrayBuffer: ArrayBuffer) {
     const dataView = new DataView(arrayBuffer);
-    const namespace = dataView.getUint32(0);
+    const namespace = dataView.getUint32(0, true);
     console.log(`A message of namespace ${namespace} with length ${arrayBuffer.byteLength} has arrived.`)
     if (this.lockingNamespace==namespace) {
       clearTimeout(this.modalSpinnerTimeoutHandle)
@@ -214,9 +214,8 @@ export class AppController implements IAppManagement, IScreenControllerHost {
       this.messageBuffer=new Array<BufferedMessage>()
     }
     this.socket.onerror = (event: Event) => {
-      var message = `Websocket error ${event}`
-      console.error(message)
-      this.ShowSnackbar(Severity.ERROR, message)
+      console.error(`Websocket error ${JSON.stringify(event)}`)
+      this.ShowSnackbar(Severity.ERROR, "Websocket Error")
     }
     this.socket.onmessage = (event: MessageEvent<any>) => {
       this.onWebsocketData(event.data)
@@ -226,9 +225,8 @@ export class AppController implements IAppManagement, IScreenControllerHost {
         console.info('The Websocket connection has been closed normally. But why????')
         return
       }
-      var message = `Websocket has been closed ${event}`
-      console.error(message)
-      this.ShowSnackbar(Severity.ERROR, message)
+      console.error(`Websocket has been closed: ${JSON.stringify(event)}`)
+      this.ShowSnackbar(Severity.ERROR, `Websocket has been closed`)
     }
     this.menu.check();
     //this.chatbot.Setup();
