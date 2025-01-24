@@ -14,6 +14,9 @@ export const WEB_SUBDIR = "web"
 export const FLASH_KEY_SUBDIR ="flash_encryption"
 export const FLASH_KEY_FILENAME= "key.bin"
 export const INFO_JSON_FILENAME = "info.json"
+export const NVS_PARTITION_BIN_FILENAME ="nvs_partition-enc.bin"
+export const NVS_CSV_FILENAME ="nvs.csv"
+export const NVS_CPP_HEADER_FILENAME ="nvs_accessor.hh.inc"
 
 export const CERTIFICATES_SUBDIR =  "certificates"
 export const ESP32_CERT_PEM_CRT_FILE = "esp32.pem.crt"
@@ -46,7 +49,7 @@ export class Paths{
     get GENERATED(){return path.join(this.c.c.idfProjectDirectory, "generated");}
     get GENERATED_SENSACT_TS() {return path.join(this.GENERATED, "sensact_ts");}
     get GENERATED_BOARD_SPECIFIC() {return path.join(this.GENERATED, "board_specific_cpp");}
-    get GENERATED_USERSETTINGS() {return path.join(this.GENERATED, "usersettings");}
+    get GENERATED_NVS() {return path.join(this.GENERATED, "nvs");}
     
     get WM_GENERATED(){return path.join(this.c.c.idfComponentWebmanangerDirectory, "generated");}
     get WM_GENERATED_WM_SENSACT_FBS() {return path.join(this.WM_GENERATED, "sensact_fbs");}
@@ -54,12 +57,12 @@ export class Paths{
     
     //intermediate and distribution
 
-
-    get WEB_SRC_GENERATED() {return path.join(this.WEB, "generated")}
     get TESTSERVER_GENERATED() {return path.join(this.TESTSERVER, "generated")}
-    get DEST_FLATBUFFERS_TYPESCRIPT_WEBUI() {return path.join(this.WEB_SRC_GENERATED, "flatbuffers");}
-    get DEST_SENSACT_TYPESCRIPT_WEBUI() {return path.join(this.WEB_SRC_GENERATED, "sensact");}
-    get DEST_USERSETTINGS_PATH() {return path.join(this.WEB_SRC_GENERATED, "usersettings", "usersettings.ts");}
+
+    get WEB_GENERATED() {return path.join(this.WEB, "generated")}
+    get WEB_GENERATED_FLATBUFFERS() {return path.join(this.WEB_GENERATED, "flatbuffers");}
+    get WEB_GENERATED_SENSACT() {return path.join(this.WEB_GENERATED, "sensact");}
+    get WEB_GENERATED_USERSETTINGS() {return path.join(this.WEB_GENERATED, "usersettings");}
 
     //Template
     get TEMPLATE_SEND_COMMAND_IMPLEMENTATION() {return path.join(this.WEB, "templates", "sensact",  "sendCommandImplementation.template.ts");}
@@ -71,7 +74,7 @@ export class Paths{
         
         
     
-    get USERSETTINGS_PATH(){return path.join(this.c.c.idfProjectDirectory, "usersettings", "go_here","go_here", "usersettings.ts");}
+    get USERSETTINGS_PATH(){return path.join(this.c.c.idfProjectDirectory, "usersettings", "usersettings.ts");}
     
     
     get FLATBUFFERS_SCHEMA_PATH() {return path.join(this.c.c.idfComponentWebmanangerDirectory, "flatbuffers");}

@@ -2,8 +2,8 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-import { RequestRestart } from '../system/request-restart';
-import { RequestSystemData } from '../system/request-system-data';
+import { RequestRestart } from '../systeminfo/request-restart';
+import { RequestSystemData } from '../systeminfo/request-system-data';
 
 
 export enum Requests {

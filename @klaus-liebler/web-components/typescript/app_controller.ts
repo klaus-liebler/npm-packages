@@ -11,6 +11,7 @@ import { Html, Severity, severity2class, severity2symbol } from "./utils/common"
 import { WS_URL } from "./utils/constants";
 import { IAppManagement, IScreenControllerHost, IWebsocketMessageListener } from "./utils/interfaces";
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
+import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 
 
 class Router2ContentAdapter implements IRouteHandler {
@@ -119,7 +120,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   private onWebsocketData(arrayBuffer: ArrayBuffer) {
     const dataView = new DataView(arrayBuffer);
     const namespace = dataView.getUint32(0, true);
-    console.log(`A message of namespace ${namespace} with length ${arrayBuffer.byteLength} has arrived.`)
+    console.log(`A message of namespace ${namespace} with length ${arrayBuffer.byteLength} has arrived: ${ArrayBufferToHexString(arrayBuffer)} .`)
     if (this.lockingNamespace==namespace) {
       clearTimeout(this.modalSpinnerTimeoutHandle)
       this.lockingNamespace = null

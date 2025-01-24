@@ -5,12 +5,9 @@ import { Context } from './context';
 import path from 'node:path';
 import { mac_12char } from './utils';
 import { FindProbablePort } from './esp32';
+import * as os from "node:os"
 
 
-
-//User settings partition
-const USERSETTINGS_PARTITION_NAME="nvs"
-const USERSETTINGS_PARTITION_SIZE_KILOBYTES=16;
 const IDF_PATH=globalThis.process.env.IDF_PATH as string;
 //Location of esp idf tools
 const NVS_PARTITION_GEN_TOOL=path.join(IDF_PATH, "components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py");
@@ -26,7 +23,7 @@ export async function createRandomFlashEncryptionKeyLazily(c:Context) {
     return;
   }
   p.createBoardSpecificPathLazy(P.FLASH_KEY_SUBDIR);
-  espsecure(`generate_flash_encryption_key --keylen 256 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}`, true);
+  espsecure(`generate_flash_encryption_key --keylen 256 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}`, (line)=>true);
   console.log('Random Flash Encryption Key successfully generated');
 }
 
@@ -40,16 +37,58 @@ export async function burnFlashEncryptionKeyToAndActivateEncryptedFlash(c:Contex
   if(!pi){
     throw Error("No connected Board found")
   }
-  espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`);
-  espefuse(`--port ${pi.path} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`);
+  espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`, (l)=>false);
+  espefuse(`--port ${pi.path} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`, (l)=>false);
   console.log('Random Flash Encryption Key successfully burned to EFUSE; encryption of flash activated!');
   c.setFlashEncryptionKeyBurnedAndActivated();
   
 }
 
+interface IPartitionTableEntry {
+  Name: string;
+  Type: string;
+  SubType: string;
+  Offset?: number; // Offset ist jetzt ein optionaler numerischer Wert.
+  Size: number;    // Size ist ein numerischer Wert.
+  Flags?: string;  // Flags sind weiterhin optional und vom Typ string.
+}
+
+function parsePartitionsCSVFromFile(filePath: string): IPartitionTableEntry[] {
+  // Lese den gesamten Inhalt der Datei als String.
+  const csvData = fs.readFileSync(filePath, 'utf8');
+
+  // Parsen der CSV-Daten.
+  const lines = csvData.split('\n');
+  const entries: IPartitionTableEntry[] = [];
+
+  // Beginne ab der dritten Zeile zu parsen, da die ersten zwei Zeilen Kommentare sind.
+  for (let i = 2; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line === '') continue; // Überspringe leere Zeilen.
+    const values = line.split(',');
+
+    // Erstelle ein Entry und füge es zur Liste hinzu.
+    const entry: IPartitionTableEntry = {
+      Name: values[0],
+      Type: values[1],
+      SubType: values[2],
+      Offset: values[3] ? parseInt(values[3], 16) : undefined, // Konvertiere Offset nach Nummer (hexadezimal).
+      Size: parseInt(values[4], 16), // Konvertiere Size nach Nummer (hexadezimal).
+      Flags: values[5] || undefined, // Flags bleiben undefined, wenn sie leer sind.
+    };
+
+    entries.push(entry);
+  }
+
+  return entries;
+}
+
+
+
+
 export async function buildFirmware(c:Context) {
   const p = new P.Paths(c);
-  exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, true);
+  exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, (l)=>true);
   console.log('Build-Prozess abgeschlossen!');
 }
 /*
@@ -63,13 +102,27 @@ All app type partitions
 
 export async function encryptFirmware(c:Context) {
   const p = new P.Paths(c);
-  [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata, c.f!.otadata].forEach(s=>{
-    espsecure(`encrypt_flash_data --aes_xts --keyfile ${p.boardSpecificPath("flash_encryption", "key.bin")} --address ${s.offset} --output ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(p.BUILD, s.file)}`, false);
+  [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s=>{
+    espsecure(`encrypt_flash_data --aes_xts --keyfile ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(p.BUILD, s.file)}`, ()=>false);
   })
   console.log('Encryption finished');
 }
 
+export function nvs_partition_gen_encrypt(c:Context, filterStdOut: (line:string)=>boolean):Section {
+  const p = new P.Paths(c);
+  const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
 
+  if(nvsPartitionInfo.Size%4096!=0){
+    throw new Error(`size_of_nvs_partition_kibibytes must be a multiple of 4096`)
+  }
+  if(!nvsPartitionInfo.Offset){
+    throw new Error(`nvsPartitionInfo.Offset must be defined`)
+  }
+
+  const cmd = `python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey "${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+  exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
+  return {encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+}
 
 export async function flashEncryptedFirmware(c:Context) {
   const p = new P.Paths(c);
@@ -77,9 +130,23 @@ export async function flashEncryptedFirmware(c:Context) {
   if(!pi){
     throw Error("No connected Board found")
   }
-  [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata, c.f!.otadata].forEach(s=>{
-      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))}`;
-      esptool(cmd, false)
+
+  const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
+  
+  sections.forEach(e=>e.file=e.file.replace(".bin", "-enc.bin"))//change filename to encrypted
+  sections.push(c.f!.storage); //c.f!.storage is not encrypted!
+
+  if(fs.existsSync(path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME))){
+    const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
+    
+    if(!nvsPartitionInfo.Offset)throw new Error(`nvsPartitionInfo.Offset must be defined`)
+    //add nvs-partition only if it exists, filename needs not to be changed, as it is created directly encrypted with correct filename
+    sections.push({encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+  }
+  
+  sections.forEach(s=>{
+      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${path.join(p.BUILD, s.file)}`;
+      esptool(cmd, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"))
     })
   console.log('Flash finished');
 }
@@ -90,9 +157,11 @@ export async function flashFirmware(c:Context) {
   if(!pi){
     throw Error("No connected Board found")
   }
-  exec_in_idf_terminal(`idf.py -p ${pi.path} flash`, c.c.idfProjectDirectory);
+  exec_in_idf_terminal(`idf.py -p ${pi.path} flash`, c.c.idfProjectDirectory, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"));
   console.log('Flash-Prozess abgeschlossen!');
 }
+
+
 
 
 export function GetProjectDescription(espIdfProjectDirectory: string): IIdfProjectInfo|null{
@@ -111,38 +180,38 @@ export function GetFlashArgs(espIdfProjectDirectory: string): IFlasherConfigurat
   return JSON.parse(fs.readFileSync(p).toString()) as IFlasherConfiguration;
 }
 
-export function espefuse(params: string, suppressStdOut: boolean = false) {
-  tool("espefuse.py", params, suppressStdOut)
+export function espefuse(params: string, filterStdOut: (line:string)=>boolean) {
+  tool("espefuse.py", params, filterStdOut)
 }
 
-export function espsecure(params: string, suppressStdOut: boolean = false) {
-  tool("espsecure.py", params, suppressStdOut)
+export function espsecure(params: string, filterStdOut: (line:string)=>boolean) {
+  tool("espsecure.py", params, filterStdOut)
 }
 
-export function esptool(params: string, suppressStdOut: boolean = false, workingDirectory: string="./") {
-  tool("esptool.py", params, suppressStdOut, workingDirectory)
+export function esptool(params: string, filterStdOut: (line:string)=>boolean, workingDirectory: string="./") {
+  tool("esptool.py", params, filterStdOut, workingDirectory)
 }
 
 
-export function tool(tool: string, params: string, suppressStdOut: boolean = false, workingDirectory: string="./") {
+export function tool(tool: string, params: string, filterStdOut: (line:string)=>boolean=(l)=>true, workingDirectory: string="./") {
   const cmd = `python.exe ${path.join(IDF_PATH, "components", "esptool_py", "esptool", tool)} ${params} `
-  exec_in_idf_terminal(cmd, workingDirectory, suppressStdOut)
+  exec_in_idf_terminal(cmd, workingDirectory, filterStdOut)
 }
 
-export function partition_gen(espIdfProjectDirectory: string, source_file:string, target_file:string, suppressStdOut: boolean = false) {
-  const cmd = `python.exe ${path.join(IDF_PATH, NVS_PARTITION_GEN_TOOL)} generate "${source_file}" "${target_file}" ${USERSETTINGS_PARTITION_SIZE_KILOBYTES * 1024}`
-  exec_in_idf_terminal(cmd, espIdfProjectDirectory, suppressStdOut)
+export function spiffsgen(image_size: number, base_dir:string, output_file:string, filterStdOut: (line:string)=>boolean=(l)=>true, workingDirectory: string="./") {
+  const cmd = `python.exe spiffsgen.py ${image_size} ${base_dir} ${output_file} `
+  exec_in_idf_terminal(cmd, workingDirectory, filterStdOut)
 }
 
-export function exec_in_idf_terminal(command: string, idfProjectDirectory: string, suppressStdOut: boolean = false) {
+export function exec_in_idf_terminal(command: string, idfProjectDirectory: string, filterStdOut: (line:string)=>boolean) {
   const cmd = `${path.join(IDF_PATH, "export.bat")} && ${command}`
   console.info(`Executing ${cmd}`)
   const stdout = execSync(cmd, {
     cwd: idfProjectDirectory,
     env: process.env
   });
-  if (!suppressStdOut && stdout)
-    console.log(stdout.toString());
+  if (stdout)
+    stdout.toString().split(os.EOL).filter((v)=>filterStdOut(v)).forEach(v=>console.log(v.toString()))
 }
 
 export interface ConfigEnvironment {
@@ -210,7 +279,7 @@ interface FlashFiles {
 interface Section {
   offset: string;
   file: string;
-  encrypted: string;
+  encrypted: boolean;
 }
 
 interface ExtraEsptoolArgs {

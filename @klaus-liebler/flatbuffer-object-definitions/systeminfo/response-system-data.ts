@@ -4,8 +4,8 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Mac6 } from '../system/mac6';
-import { PartitionInfo } from '../system/partition-info';
+import { Mac6 } from '../systeminfo/mac6';
+import { PartitionInfo } from '../systeminfo/partition-info';
 
 
 export class ResponseSystemData {

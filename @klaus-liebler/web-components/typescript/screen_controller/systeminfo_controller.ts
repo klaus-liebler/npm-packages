@@ -1,4 +1,4 @@
-import {Namespace, Mac6, RequestRestart, RequestSystemData, ResponseSystemData, Responses, Requests, RequestWrapper, ResponseWrapper } from "@klaus-liebler/flatbuffer-object-definitions/system";
+import {Namespace, Mac6, RequestRestart, RequestSystemData, ResponseSystemData, Responses, Requests, RequestWrapper, ResponseWrapper } from "@klaus-liebler/flatbuffer-object-definitions/systeminfo";
 
 
 import { ScreenController } from "./screen_controller";
@@ -41,7 +41,10 @@ export class SystemController extends ScreenController {
 
     public OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
 
-        if(namespace!=Namespace.Value) return;
+        if(namespace!=Namespace.Value){
+            console.error(`system controller namespace problem: ${namespace}!=${Namespace.Value}`)
+            return;
+        }
         var rw=ResponseWrapper.getRootAsResponseWrapper(bb);
         if(rw.responseType()!=Responses.ResponseSystemData) throw new Error("Unexpected Response Type");
         var sd=rw.response(new ResponseSystemData());

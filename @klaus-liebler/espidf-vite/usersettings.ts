@@ -1,13 +1,14 @@
 import path from "path";
 import {EscapeToVariableName, StringBuilderImpl } from "@klaus-liebler/commons";
 import {writeFileCreateDirLazy } from "./utils";
-
+import * as url from "node:url"
 import fs from "node:fs";
 import * as idf from "./espidf";
 import { Context } from "./context";
 import * as P from "./paths";
+import { ConfigGroup } from "../usersettings_codegeneration";
 
-function generate_partition_csv(p:P.Paths, theusersettings:any) {
+function generate_partition_csv(p:P.Paths, theusersettings:ConfigGroup[]) {
   
   console.log(`User settings has ${theusersettings.length} groups`);
   var codeBuilder = new StringBuilderImpl("key,type,encoding,value");
@@ -18,10 +19,10 @@ function generate_partition_csv(p:P.Paths, theusersettings:any) {
       ci.RenderNvsPartitionGenerator(codeBuilder);
     });
   });
-  writeFileCreateDirLazy(path.join(p.GENERATED_USERSETTINGS, "usersettings_partition.csv"), codeBuilder.Code);
+  writeFileCreateDirLazy(path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME), codeBuilder.Code);
 }
 
-function generate_cpp_accessor(p:P.Paths, theusersettings:any) {
+function generate_cpp_accessor(p:P.Paths, theusersettings:ConfigGroup[]) {
 
   var codeBuilder = new StringBuilderImpl();
   theusersettings.forEach((cg, i, a) => {
@@ -48,21 +49,22 @@ function generate_cpp_accessor(p:P.Paths, theusersettings:any) {
 
   });
   codeBuilder.AppendLine(`}`)
-  writeFileCreateDirLazy(path.join(p.GENERATED_USERSETTINGS, "usersettings_config.hh.inc"), codeBuilder.Code);
+  writeFileCreateDirLazy(path.join(p.GENERATED_NVS, P.NVS_CPP_HEADER_FILENAME), codeBuilder.Code);
 }
 
 
-export async function generate_usersettings(c:Context) {
+export async function generate_usersettings(c:Context, cfg:ConfigGroup[]) {
   const p = new P.Paths(c);
-  const us = await import(path.join(p.USERSETTINGS_PATH));
-  const theusersettings = us.Build();
-  generate_partition_csv(p, theusersettings);
+  console.log("Try to import")
+ 
+  generate_partition_csv(p, cfg);
   //compile partition csv to binary partition file
-  idf.partition_gen(c.c.idfProjectDirectory, path.join(p.GENERATED_USERSETTINGS, "usersettings_partition.csv"), path.join(p.GENERATED_USERSETTINGS, "usersettings_partition.bin"), false); 
-  generate_cpp_accessor(p, theusersettings);
+  idf.nvs_partition_gen_encrypt(c, ()=>true); 
+  generate_cpp_accessor(p, cfg);
 
   //this is necessary to copy the usersettings (the project specific file, that contains all settings) in the context of the browser client project. 
   // There, the usersettings_base.ts is totally different from the one used in the build process
 
-  fs.cpSync(p.USERSETTINGS_PATH, p.DEST_USERSETTINGS_PATH, { recursive: true });
+  fs.cpSync(p.USERSETTINGS_PATH, path.join(p.WEB_GENERATED_USERSETTINGS, "usersettings.ts"), { recursive: true });
+  fs.writeFileSync(path.join(p.WEB_GENERATED_USERSETTINGS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/web-components"`);
 }

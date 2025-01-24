@@ -4,7 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Requests, unionToRequests, unionListToRequests } from '../system/requests';
+import { Requests, unionToRequests, unionListToRequests } from '../systeminfo/requests';
 
 
 export class RequestWrapper {

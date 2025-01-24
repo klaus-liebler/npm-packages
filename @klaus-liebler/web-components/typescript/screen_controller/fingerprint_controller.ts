@@ -202,7 +202,10 @@ export class FingerprintScreenController extends ScreenController {
     }
 
     OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
-        if(namespace!=Namespace.Value) return;
+        if(namespace!=Namespace.Value){
+            console.error(`fingerprint controller namespace problem: ${namespace}!=${Namespace.Value}`)
+            return;
+        }
         let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
         switch (messageWrapper.responseType()) {
             case Responses.ResponseFingerprintSensorInfo: {

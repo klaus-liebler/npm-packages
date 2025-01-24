@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-import { ResponseSystemData } from '../system/response-system-data';
+import { ResponseSystemData } from '../systeminfo/response-system-data';
 
 
 export enum Responses {

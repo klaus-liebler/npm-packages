@@ -14,7 +14,7 @@ export function X02(num: number | bigint, len = 2) {
     return "0".repeat(len - str.length) + str; }
 
 export function EscapeToVariableName(n: string) {
-    return n.toLocaleUpperCase().replaceAll(" ", "_");
+    return (<any>(n.toLocaleUpperCase())).replaceAll(" ", "_");
 }
 
 export function bigint2array(mc: number) {
@@ -45,6 +45,25 @@ export function strInterpolator(str, values_flat: any) {
           return values_flat[p1] !== void 0 ? values_flat[p1] : "";
       }
   });
+}
+
+export function ArrayBufferToHexString(buffer:ArrayBuffer) {
+  // Erstellen Sie eine Uint8Array-Ansicht des ArrayBuffers.
+  const byteArray = new Uint8Array(buffer);
+
+  // Initialisieren Sie eine Variable zur Speicherung des Hex-Strings.
+  let hexString = '';
+
+  // Iterieren Sie über die ersten 16 Bytes des Arrays.
+  for (let i = 0; i < 16; i++) {
+    // Konvertieren Sie jedes Byte in einen zweistelligen Hex-Wert.
+    const hex = byteArray[i].toString(16).padStart(2, '0');
+
+    // Fügen Sie den Hex-Wert zur Hex-String-Liste hinzu.
+    hexString += hex;
+  }
+
+  return hexString;
 }
 
 export class StringBuilderImpl implements IStringBuilder {

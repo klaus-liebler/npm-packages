@@ -4,7 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Responses, unionToResponses, unionListToResponses } from '../system/responses';
+import { Responses, unionToResponses, unionListToResponses } from '../systeminfo/responses';
 
 
 export class ResponseWrapper {

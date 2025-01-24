@@ -172,6 +172,7 @@ export class WifimanagerController extends ScreenController {
     }
 
     onResponseNetworkInformation(r: ResponseNetworkInformation) {
+        console.log("onResponseNetworkInformation");
         this.hostname = r.hostname()!;
         this.ssidAp = r.ssidAp()!;
         this.passwordAp = r.passwordAp()!;
@@ -228,7 +229,10 @@ export class WifimanagerController extends ScreenController {
     }
 
     OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
-        if (namespace != Namespace.Value) return
+        if(namespace!=Namespace.Value){
+            console.error(`wifimanager controller namespace problem: ${namespace}!=${Namespace.Value}`)
+            return;
+        }
         let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb)
         switch (messageWrapper.responseType()) {
             case Responses.ResponseNetworkInformation:
@@ -238,9 +242,11 @@ export class WifimanagerController extends ScreenController {
                 this.onResponseWifiConnect(<ResponseWifiConnect>messageWrapper.response(new ResponseWifiConnect()));
                 break;
             case Responses.ResponseWifiDisconnect:
-                console.log("Manual disconnect requested...");
+                console.log("Manual disconnection was successful.");
                 this.appManagement.ShowDialog(new OkDialog(Severity.INFO, "Manual disconnection was successful. "));
                 break;
+            default:
+                console.error(`Unknown messageWrapper.responseType(): ${messageWrapper.responseType().toString()}`)
         }
     }
 }

@@ -1,12 +1,14 @@
 import { RequestGetUserSettings, RequestSetUserSettings, RequestWrapper, Requests, ResponseGetUserSettings, ResponseSetUserSettings, ResponseWrapper, Responses } from "@klaus-liebler/flatbuffer-object-definitions/usersettings";
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
-import us from "../../generated/usersettings/usersettings"
-import { BooleanItemRT, ConfigGroup, ConfigItemRT, EnumItemRT, IntegerItemRT, StringItemRT, ValueUpdater } from "../utils/usersettings_base";
+
+import { BooleanItemRT, ConfigGroup, ConfigItemRT, EnumItemRT, IntegerItemRT, StringItemRT, ValueUpdater } from "../utils/usersettings_base_classes";
 import { TemplateResult, html, render } from "lit-html";
 import { Severity } from "../utils/common";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { IAppManagement } from "../utils/interfaces";
+import { usersettings } from "@klaus-liebler/flatbuffer-object-definitions";
+import { OkDialog } from "../dialog_controller";
 
 
 class ConfigGroupRT{
@@ -44,11 +46,13 @@ class ConfigGroupRT{
     `}
     private sendRequestGetUserSettings() {
         let b = new flatbuffers.Builder(256);
-        this.appManagement.WrapAndFinishAndSend(b,
-            Requests.RequestGetUserSettings,
-            RequestGetUserSettings.createRequestGetUserSettings(b, b.createString(this.groupCfg.Key)),
-            [Responses.ResponseGetUserSettings]
-        );
+        b.finish(
+            RequestWrapper.createRequestWrapper(b,
+                Requests.RequestGetUserSettings,
+                RequestGetUserSettings.createRequestGetUserSettings(b, b.createString(this.groupCfg.Key))
+            )
+        )
+        this.appManagement.SendFinishedBuilder(usersettings.Namespace.Value, b);
     }
 
     private sendRequestSetUserSettings() {
@@ -58,13 +62,15 @@ class ConfigGroupRT{
             if(!v.HasAChangedValue()) continue;
             vectorOfSettings.push(v.WriteToFlatbufferBufferAndReturnSettingWrapperOffset(b));
         }
-        this.appManagement.WrapAndFinishAndSend(b,
+        b.finish(RequestWrapper.createRequestWrapper(
+            b,
             Requests.RequestSetUserSettings,
-            RequestSetUserSettings.createRequestSetUserSettings(b, b.createString(this.groupCfg.Key),
-                ResponseGetUserSettings.createSettingsVector(b, vectorOfSettings)
-            ),
-            [Responses.ResponseSetUserSettings]
-        );
+            RequestSetUserSettings.createRequestSetUserSettings(
+                b,b.createString(this.groupCfg.Key), ResponseGetUserSettings.createSettingsVector(b, vectorOfSettings)
+            )
+
+        ))
+        this.appManagement.SendFinishedBuilder(usersettings.Namespace.Value, b);
     }
 
     private onBtnOpenCloseClicked(e:MouseEvent){
@@ -103,6 +109,11 @@ class ConfigGroupRT{
 }
 
 export class UsersettingsController extends ScreenController implements ValueUpdater{
+
+    constructor(appManagement:IAppManagement, private readonly cfg:Array<ConfigGroup>){
+        super(appManagement)
+    }
+
     private mainElement:Ref<HTMLElement>= createRef();
     public Template = () => html`<h1>User Settings</h1><section ${ref(this.mainElement)}></section>`
 
@@ -140,9 +151,15 @@ export class UsersettingsController extends ScreenController implements ValueUpd
 
     private groupKey2itemKey2configItemRT = new Map<string, Map<string,ConfigItemRT>>();
     private groupKey2configGroupRT = new Map<string, ConfigGroupRT>();
-    private cfg:ConfigGroup[]=[];
+    
 
-    public onMessage(messageWrapper: ResponseWrapper): void {
+    public OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
+    
+        if(namespace!=usersettings.Namespace.Value){
+            console.error(`usersettings controller namespace problem: ${namespace}!=${usersettings.Namespace.Value}`)
+            return;
+        }
+        let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
         switch (messageWrapper.responseType()) {
             case Responses.ResponseGetUserSettings:
                 this.onResponseGetUserSettings(messageWrapper);
@@ -158,7 +175,7 @@ export class UsersettingsController extends ScreenController implements ValueUpd
         let resp = <ResponseSetUserSettings>messageWrapper.response(new ResponseSetUserSettings());
         let groupRtMap=this.groupKey2itemKey2configItemRT.get(resp.groupKey()!);
         if(!groupRtMap){
-            this.appManagement.showOKDialog(Severity.WARN, `Received settings for unknown group index ${resp.groupKey()}`);
+            this.appManagement.ShowDialog(new OkDialog(Severity.WARN, `Received settings for unknown group index ${resp.groupKey()}`));
             return;
         }
         groupRtMap.forEach((v,_k,_m)=>{v.Flag=false});
@@ -180,7 +197,7 @@ export class UsersettingsController extends ScreenController implements ValueUpd
             }
         });
         if(unknownKeys.length!=0 || nonStoredEntryKeys.length!=0){
-            this.appManagement.showOKDialog(Severity.WARN, `The following errors occured while receiving data for ${resp.groupKey()}: Unknown names: ${unknownKeys.join(", ")}; No successful storage for: ${nonStoredEntryKeys.join(", ")};`);
+            this.appManagement.ShowDialog(new OkDialog(Severity.WARN, `The following errors occured while receiving data for ${resp.groupKey()}: Unknown names: ${unknownKeys.join(", ")}; No successful storage for: ${nonStoredEntryKeys.join(", ")};`));
         }
         groupRtMap.forEach((v,_k,_m)=>{v.Flag=false});
     }
@@ -189,7 +206,7 @@ export class UsersettingsController extends ScreenController implements ValueUpd
         let resp = <ResponseGetUserSettings>messageWrapper.response(new ResponseGetUserSettings());
         let itemKey2item=this.groupKey2itemKey2configItemRT.get(resp.groupKey()!);
         if(!itemKey2item){
-            this.appManagement.showOKDialog(Severity.WARN, `Received settings for unknown group index ${resp.groupKey()}`);
+            this.appManagement.ShowDialog(new OkDialog(Severity.WARN, `Received settings for unknown group index ${resp.groupKey()}`));
             return;
         }
         itemKey2item.forEach((v,_k,_m)=>{v.Flag=false});
@@ -213,18 +230,12 @@ export class UsersettingsController extends ScreenController implements ValueUpd
             }
         });
         if(unknownKeys.length!=0 || nonUpdatedEntries.length!=0){
-            this.appManagement.showOKDialog(Severity.WARN, `The following errors occured while receiving data for ${resp.groupKey()}: Unknown keys: ${unknownKeys.join(", ")}; No updates for: ${nonUpdatedEntries.join(", ")};`);
+            this.appManagement.ShowDialog(new OkDialog(Severity.WARN, `The following errors occured while receiving data for ${resp.groupKey()}: Unknown keys: ${unknownKeys.join(", ")}; No updates for: ${nonUpdatedEntries.join(", ")};`));
         }
     }
     
-    
-    
-
-
-    onCreate(): void {
-        this.appManagement.registerWebsocketMessageTypes(this, Responses.ResponseGetUserSettings, Responses.ResponseSetUserSettings);
-        this.cfg = us.Build();
-       
+    OnCreate(): void {
+        this.appManagement.RegisterWebsocketMessageNamespace(this, usersettings.Namespace.Value);
     }
 
     private onStart_or_onRestart(){
@@ -239,13 +250,13 @@ export class UsersettingsController extends ScreenController implements ValueUpd
         render(templates, this.mainElement.value!)
     }
    
-    onFirstStart(): void {
+    OnFirstStart(): void {
         this.onStart_or_onRestart();
     }
-    onRestart(): void {
+    OnRestart(): void {
         this.onStart_or_onRestart();
     }
-    onPause(): void {
+    OnPause(): void {
     }
 
 }

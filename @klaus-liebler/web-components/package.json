@@ -11,8 +11,9 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@klaus-liebler/flatbuffer-object-definitions": "file:../flatbuffer-object-definitions",
+    "@klaus-liebler/commons": "file:../commons",
     "chart.js": "^4.4.7",
-    "flatbuffers": "^24.12.23",
+    "flatbuffers": "^25.1.21",
     "lit-html": "^3.2.1"
   }
 }
