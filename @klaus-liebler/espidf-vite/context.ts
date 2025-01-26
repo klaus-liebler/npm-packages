@@ -5,7 +5,10 @@ import * as P from "./paths";
 import fs from "node:fs";
 import path from "node:path";
 export class ContextConfig {
-  constructor(public readonly idfProjectDirectory: string, public readonly idfComponentWebmanangerDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
+  //generatedDirectory: NUR!!! hier darf generierter Code hingeschrieben werden; nichts an anderer Stelle
+  //idfProjectDirectory: benötigt, weil hier im Build-Verzeichnis einige JSON-Dateien liegen, die man einlesen möchte
+  //flatbufferSchemaDirs: Alle fbs-Dateien in diesen Verzeichnissen werden übersetzt
+  constructor(public readonly generatedDirectory, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
 }
 export class Context {
 

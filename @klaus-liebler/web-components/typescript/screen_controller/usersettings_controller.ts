@@ -1,4 +1,4 @@
-import { RequestGetUserSettings, RequestSetUserSettings, RequestWrapper, Requests, ResponseGetUserSettings, ResponseSetUserSettings, ResponseWrapper, Responses } from "@klaus-liebler/flatbuffer-object-definitions/usersettings";
+import {Namespace, RequestGetUserSettings, RequestSetUserSettings, RequestWrapper, Requests, ResponseGetUserSettings, ResponseSetUserSettings, ResponseWrapper, Responses } from "@generated/flatbuffers_ts/usersettings";
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
 
@@ -7,7 +7,6 @@ import { TemplateResult, html, render } from "lit-html";
 import { Severity } from "../utils/common";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { IAppManagement } from "../utils/interfaces";
-import { usersettings } from "@klaus-liebler/flatbuffer-object-definitions";
 import { OkDialog } from "../dialog_controller";
 
 
@@ -26,15 +25,15 @@ class ConfigGroupRT{
     private Template=(itemTemplates:Array<TemplateResult<1>>)=>{
         return html`
     <div class="accordion">
-        <button ${ref(this.btnOpenClose)} @click=${(e)=>this.onBtnOpenCloseClicked(e)} style="display: flex; ">
-            <span ${ref(this.spanArrowContainer)}>▶</span>
-            <span style="flex-grow: 1;">${this.groupCfg.displayName}</span>
-            <input ${ref(this.btnSave)} @click=${(e:MouseEvent)=>this.onBtnSaveClicked(e)} disabled type="button" value="💾 Save Changes" />
-            <input ${ref(this.btnUpdate)} @click=${(e:MouseEvent)=>this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
-            <input ${ref(this.btnReset)} type="button" value=" 🗑 Reset Values" />
+        <button ${ref(this.btnOpenClose)} @click=${(e)=>this.onBtnOpenCloseClicked(e)} style="display: flex; width:100%; align-items:center;">
+            <span ${ref(this.spanArrowContainer)} style="height: 100%;">▶</span>
+            <span style="flex-grow:1; text-align:left; padding-left:10px">${this.groupCfg.displayName}</span>
+            <input ${ref(this.btnSave)} style="height:30px;" @click=${(e:MouseEvent)=>this.onBtnSaveClicked(e)} disabled type="button" value="💾 Save Changes" />
+            <input ${ref(this.btnUpdate)} style="height:30px;" @click=${(e:MouseEvent)=>this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
+            <input ${ref(this.btnReset)} style="height:30px;" type="button" value=" 🗑 Reset Values" />
         </button>
-        <div ${ref(this.divPanel)}>
-            <table>
+        <div ${ref(this.divPanel)} style="display:none">
+            <table style="margin-top:0px">
                 <thead>
                     <tr><th>Name</th><th></th><th style='width: 100%;'>Value</th></tr>
                 </thead>
@@ -52,7 +51,7 @@ class ConfigGroupRT{
                 RequestGetUserSettings.createRequestGetUserSettings(b, b.createString(this.groupCfg.Key))
             )
         )
-        this.appManagement.SendFinishedBuilder(usersettings.Namespace.Value, b);
+        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
     }
 
     private sendRequestSetUserSettings() {
@@ -70,7 +69,7 @@ class ConfigGroupRT{
             )
 
         ))
-        this.appManagement.SendFinishedBuilder(usersettings.Namespace.Value, b);
+        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
     }
 
     private onBtnOpenCloseClicked(e:MouseEvent){
@@ -155,8 +154,8 @@ export class UsersettingsController extends ScreenController implements ValueUpd
 
     public OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
     
-        if(namespace!=usersettings.Namespace.Value){
-            console.error(`usersettings controller namespace problem: ${namespace}!=${usersettings.Namespace.Value}`)
+        if(namespace!=Namespace.Value){
+            console.error(`usersettings controller namespace problem: ${namespace}!=${Namespace.Value}`)
             return;
         }
         let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
@@ -235,7 +234,7 @@ export class UsersettingsController extends ScreenController implements ValueUpd
     }
     
     OnCreate(): void {
-        this.appManagement.RegisterWebsocketMessageNamespace(this, usersettings.Namespace.Value);
+        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
     }
 
     private onStart_or_onRestart(){

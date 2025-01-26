@@ -36,6 +36,7 @@ export async function convertTextToSpeech(sentences: Array<FilenameAndSsml>, tar
     writeFileCreateDirLazy(mp3path, response.audioContent as Uint8Array);
     console.info(`File ${mp3path} successfully created and written`);
   }
+  console.info(`All sounds are now available as MP3 `)
 }
 
 export async function listvoices() {

@@ -7,7 +7,7 @@ import { html } from 'lit-html';
 import { ByteBuffer } from 'flatbuffers';
 import { createRef, ref, Ref } from 'lit-html/directives/ref.js';
 import * as flatbuffers from 'flatbuffers';
-import { Mode, Namespace, RequestHeater, ResponseHeater } from "@klaus-liebler/flatbuffer-object-definitions/heaterexperiment";
+import { Mode, Namespace, RequestHeater, ResponseHeater } from "@generated/flatbuffers_ts/heaterexperiment";
 
 
 export let DE_de = new Intl.NumberFormat('de-DE');

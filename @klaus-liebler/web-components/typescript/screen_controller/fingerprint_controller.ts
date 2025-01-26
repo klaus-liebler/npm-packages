@@ -1,5 +1,5 @@
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { Finger, Namespace, NotifyEnrollNewFinger, NotifyFingerDetected, RequestCancelInstruction, RequestDeleteAllFingers, RequestDeleteFinger, RequestEnrollNewFinger, RequestFingerActionManually, RequestFingerprintSensorInfo, RequestFingers, RequestRenameFinger, RequestStoreFingerAction, RequestStoreFingerSchedule, RequestWrapper, Requests, ResponseDeleteFinger, ResponseEnrollNewFinger, ResponseFingerprintSensorInfo, ResponseFingers, ResponseWrapper, Responses } from "@klaus-liebler/flatbuffer-object-definitions/fingerprint";
+import { Finger, Namespace, NotifyEnrollNewFinger, NotifyFingerDetected, RequestCancelInstruction, RequestDeleteAllFingers, RequestDeleteFinger, RequestEnrollNewFinger, RequestFingerActionManually, RequestFingerprintSensorInfo, RequestFingers, RequestRenameFinger, RequestStoreFingerAction, RequestStoreFingerSchedule, RequestWrapper, Requests, ResponseDeleteFinger, ResponseEnrollNewFinger, ResponseFingerprintSensorInfo, ResponseFingers, ResponseWrapper, Responses } from "@generated/flatbuffers_ts/fingerprint";
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
 import { Html, Severity } from "../utils/common";

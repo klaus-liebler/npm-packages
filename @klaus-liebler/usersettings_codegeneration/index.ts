@@ -17,7 +17,7 @@ export class StringItem extends ConfigItem {
     RenderCPPConfig(codeBuilder: IStringBuilder, group: ConfigGroup): void {
         let k = EscapeToVariableName(this.Key);
         let gk = EscapeToVariableName(group.Key);
-        codeBuilder.AppendLine(`{${gk}_${k}_KEY, webmanager::Setting::Setting_StringSetting},`);
+        codeBuilder.AppendLine(`{${gk}_${k}_KEY, usersettings::Setting::Setting_StringSetting},`);
     }
 
     RenderNvsPartitionGenerator(codeBuilder: IStringBuilder) {
@@ -41,7 +41,7 @@ export class IntegerItem extends ConfigItem {
     RenderCPPConfig(codeBuilder: IStringBuilder, group: ConfigGroup): void {
         let k = EscapeToVariableName(this.Key);
         let gk = EscapeToVariableName(group.Key);
-        codeBuilder.AppendLine(`{${gk}_${k}_KEY, webmanager::Setting::Setting_IntegerSetting},`);
+        codeBuilder.AppendLine(`{${gk}_${k}_KEY, usersettings::Setting::Setting_IntegerSetting},`);
     }
 
     RenderNvsPartitionGenerator(codeBuilder: IStringBuilder) {
@@ -64,7 +64,7 @@ export class BooleanItem extends ConfigItem {
     RenderCPPConfig(codeBuilder: IStringBuilder, group: ConfigGroup): void {
         let k = EscapeToVariableName(this.Key);
         let gk = EscapeToVariableName(group.Key);
-        codeBuilder.AppendLine(`{${gk}_${k}_KEY, webmanager::Setting::Setting_BooleanSetting},`);
+        codeBuilder.AppendLine(`{${gk}_${k}_KEY, usersettings::Setting::Setting_BooleanSetting},`);
     }
 
     RenderNvsPartitionGenerator(codeBuilder: IStringBuilder) {
@@ -87,7 +87,7 @@ export class EnumItem extends ConfigItem {
     RenderCPPConfig(codeBuilder: IStringBuilder, group: ConfigGroup): void {
         let k = EscapeToVariableName(this.Key);
         let gk = EscapeToVariableName(group.Key);
-        codeBuilder.AppendLine(`{${gk}_${k}_KEY, webmanager::Setting::Setting_EnumSetting},`);
+        codeBuilder.AppendLine(`{${gk}_${k}_KEY, usersettings::Setting::Setting_EnumSetting},`);
     }
 
     RenderNvsPartitionGenerator(codeBuilder: IStringBuilder) {

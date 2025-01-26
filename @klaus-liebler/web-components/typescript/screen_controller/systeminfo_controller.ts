@@ -1,4 +1,4 @@
-import {Namespace, Mac6, RequestRestart, RequestSystemData, ResponseSystemData, Responses, Requests, RequestWrapper, ResponseWrapper } from "@klaus-liebler/flatbuffer-object-definitions/systeminfo";
+import {Namespace, Mac6, RequestRestart, RequestSystemData, ResponseSystemData, Responses, Requests, RequestWrapper, ResponseWrapper } from "@generated/flatbuffers_ts/systeminfo";
 
 
 import { ScreenController } from "./screen_controller";
@@ -6,7 +6,7 @@ import * as flatbuffers from 'flatbuffers';
 
 import { UPLOAD_URL } from "../utils/constants";
 import { MyFavouriteDateTimeFormat, Severity } from "../utils/common";
-import { findChipModel, findChipFeatures, findPartitionSubtype, findPartitionState } from "../utils/esp32";
+import { findChipModel, findChipFeatures, subtypeToString, otaStateToString } from "../utils/esp32";
 import { html } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { OkCancelDialog, OkDialog } from "../dialog_controller";
@@ -33,10 +33,6 @@ export class SystemController extends ScreenController {
         let b = new flatbuffers.Builder(1024);
         b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestSystemData, RequestSystemData.createRequestSystemData(b)))
         this.appManagement.SendFinishedBuilder(Namespace.Value, b, 30000);
-    }
-
-    partitionString(original: string | null, def: string) {
-        return (original?.charAt(0) == '\0xFF') ? def : original;
     }
 
     public OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
@@ -69,23 +65,25 @@ export class SystemController extends ScreenController {
         this.tblAppPartitions.value!.textContent = "";
         for (let i = 0; i < sd.partitionsLength(); i++) {
             if (sd.partitions(i)!.type() != 0) continue;
+            const t = sd.partitions(i)!.type();
+            const st = sd.partitions(i)!.subtype()
             var row = this.tblAppPartitions.value!.insertRow();
             row.insertCell().textContent = <string>sd.partitions(i)!.label();
-            row.insertCell().textContent = findPartitionSubtype(sd.partitions(i)!.type(), sd.partitions(i)!.subtype());
+            row.insertCell().textContent = subtypeToString(t, st);
             row.insertCell().textContent = (sd.partitions(i)!.size() / 1024) + "k";
-            row.insertCell().textContent = findPartitionState(sd.partitions(i)!.otaState());
+            row.insertCell().textContent = otaStateToString(t,st,sd.partitions(i)!.otaState());
             row.insertCell().textContent = sd.partitions(i)!.running().toString();
-            row.insertCell().textContent = this.partitionString(sd.partitions(i)!.appName(), "<undefined>");
-            row.insertCell().textContent = this.partitionString(sd.partitions(i)!.appVersion(), "<undefined>");
-            row.insertCell().textContent = this.partitionString(sd.partitions(i)!.appDate(), "<undefined>");
-            row.insertCell().textContent = this.partitionString(sd.partitions(i)!.appTime(), "<undefined>");
+            row.insertCell().textContent = sd.partitions(i)!.appName();
+            row.insertCell().textContent = sd.partitions(i)!.appVersion();
+            row.insertCell().textContent = sd.partitions(i)!.appDate();
+            row.insertCell().textContent = sd.partitions(i)!.appTime();
         }
         this.tblDataPartitions.value!.textContent = "";
         for (let i = 0; i < sd.partitionsLength(); i++) {
             if (sd.partitions(i)!.type() != 1) continue;
             var row = this.tblDataPartitions.value!.insertRow();
             row.insertCell().textContent = <string>sd.partitions(i)!.label();
-            row.insertCell().textContent = findPartitionSubtype(sd.partitions(i)!.type(), sd.partitions(i)!.subtype());
+            row.insertCell().textContent = subtypeToString(sd.partitions(i)!.type(), sd.partitions(i)!.subtype());
             row.insertCell().textContent = (sd.partitions(i)!.size() / 1024) + "k";
         }
     }
@@ -160,7 +158,7 @@ export class SystemController extends ScreenController {
                     <th>Label</th>
                     <th>Subtype</th>
                     <th>Size [byte]</th>
-                    <th>State</th>
+                    <th>OTA State</th>
                     <th>Is Running</th>
                     <th>Project Name</th>
                     <th>Project Version</th>

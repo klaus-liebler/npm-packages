@@ -1,14 +1,14 @@
 import path from "path";
 import {EscapeToVariableName, StringBuilderImpl } from "@klaus-liebler/commons";
 import {writeFileCreateDirLazy } from "./utils";
-import * as url from "node:url"
 import fs from "node:fs";
 import * as idf from "./espidf";
 import { Context } from "./context";
 import * as P from "./paths";
 import { ConfigGroup } from "../usersettings_codegeneration";
+import {IPackageJson} from "./package_json"
 
-function generate_partition_csv(p:P.Paths, theusersettings:ConfigGroup[]) {
+function generate_partition_csv(pa:P.Paths, theusersettings:ConfigGroup[]) {
   
   console.log(`User settings has ${theusersettings.length} groups`);
   var codeBuilder = new StringBuilderImpl("key,type,encoding,value");
@@ -19,7 +19,7 @@ function generate_partition_csv(p:P.Paths, theusersettings:ConfigGroup[]) {
       ci.RenderNvsPartitionGenerator(codeBuilder);
     });
   });
-  writeFileCreateDirLazy(path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME), codeBuilder.Code);
+  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS, P.NVS_CSV_FILENAME), codeBuilder.Code);
 }
 
 function generate_cpp_accessor(p:P.Paths, theusersettings:ConfigGroup[]) {
@@ -54,17 +54,28 @@ function generate_cpp_accessor(p:P.Paths, theusersettings:ConfigGroup[]) {
 
 
 export async function generate_usersettings(c:Context, cfg:ConfigGroup[]) {
-  const p = new P.Paths(c);
-  console.log("Try to import")
- 
-  generate_partition_csv(p, cfg);
+  const pa = new P.Paths(c);
+  generate_partition_csv(pa, cfg);
   //compile partition csv to binary partition file
-  idf.nvs_partition_gen_encrypt(c, ()=>true); 
-  generate_cpp_accessor(p, cfg);
+  idf.nvs_partition_gen(c, false, (l)=>l.startsWith("Created NVS binary")); 
+  generate_cpp_accessor(pa, cfg);
 
   //this is necessary to copy the usersettings (the project specific file, that contains all settings) in the context of the browser client project. 
   // There, the usersettings_base.ts is totally different from the one used in the build process
+  const USERSETTINGS_TS_FILE="usersettings.ts"
+  fs.cpSync(pa.USERSETTINGS_PATH, path.join(pa.GENERATED_NVS_TS, USERSETTINGS_TS_FILE), { recursive: true });
+  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/web-components"`);
+  const pj:IPackageJson={
+    name:"@generated/usersettings",
+    version:"0.0.1",
+    description:"Generated during Build",
+    main: USERSETTINGS_TS_FILE,
+    author:"Generated",
+    license:"No License",
+    dependencies:{
+      "a":"b"
 
-  fs.cpSync(p.USERSETTINGS_PATH, path.join(p.WEB_GENERATED_USERSETTINGS, "usersettings.ts"), { recursive: true });
-  fs.writeFileSync(path.join(p.WEB_GENERATED_USERSETTINGS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/web-components"`);
+    }
+  }
+  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "package.json"),JSON.stringify(pj))
 }

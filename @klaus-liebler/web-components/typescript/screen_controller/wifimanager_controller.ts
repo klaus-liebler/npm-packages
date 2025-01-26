@@ -1,7 +1,7 @@
 
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
-import { Namespace, RequestNetworkInformation, RequestWifiConnect, RequestWifiDisconnect, Requests, Responses, ResponseNetworkInformation, ResponseWifiConnect, ResponseWrapper, RequestWrapper } from "@klaus-liebler/flatbuffer-object-definitions/wifimanager";
+import { Namespace, RequestNetworkInformation, RequestWifiConnect, RequestWifiDisconnect, Requests, Responses, ResponseNetworkInformation, ResponseWifiConnect, ResponseWrapper, RequestWrapper } from "@generated/flatbuffers_ts/wifimanager";
 import { Severity, ip4_2_string } from "../utils/common";
 //import icon_lock from '../../assets/icon-lock.svg'
 import { TemplateResult, html, render } from "lit-html";
@@ -82,8 +82,8 @@ export class WifimanagerController extends ScreenController {
     private apTableTemplate = (lock: boolean, rssi: number, ssid: string) => html`
     <tr>
         <td><svg width="24" height="24" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path style="fill:${this.rssi2color(rssi, -60)}" d="M1,9L3,11C7.97,6.03 16.03,6.03 21,11L23,9C16.93,2.93 7.08,2.93 1,9Z" />
-            <path style="fill:${this.rssi2color(rssi, -67)}" d="M5,13L7,15C9.76,12.24 14.24,12.24 17,15L19,13C15.14,9.14 8.87,9.14 5,13Z" />
+            <path style="fill:${this.rssi2color(rssi, -67)}" d="M1,9L3,11C7.97,6.03 16.03,6.03 21,11L23,9C16.93,2.93 7.08,2.93 1,9Z" />
+            <path style="fill:${this.rssi2color(rssi, -70)}" d="M5,13L7,15C9.76,12.24 14.24,12.24 17,15L19,13C15.14,9.14 8.87,9.14 5,13Z" />
             <path style="fill:${this.rssi2color(rssi, -75)}" d="M9,17L12,20L15,17C13.35,15.34 10.66,15.34 9,17Z" />
             </svg></td>
         <td>${lock ? unsafeSVG(icon_lock) : ""}</td>
@@ -186,7 +186,9 @@ export class WifimanagerController extends ScreenController {
         let ssid2index = new Map<string, number>();
 
         for (let i = 0; i < r.accesspointsLength(); i++) {
-            let key = r.accesspoints(i)!.ssid() + "_" + r.accesspoints(i)!.authMode();
+            const ssid = r.accesspoints(i)!.ssid();
+            const auth = r.accesspoints(i)!.authMode();
+            let key = ssid + "_" + auth;
             let ap_exist = ssid2index.get(key);
             if (ap_exist === undefined) {
                 ssid2index.set(key, i);

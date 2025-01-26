@@ -44,18 +44,17 @@ const partitionsubtypesdata = new Map<number, string>([
   [0x82, "ESP_PARTITION_SUBTYPE_DATA_SPIFFS"],// = 0x82,                         
 ]);
 
-export function findPartitionState(ota_state:number|undefined): string {
+export function otaStateToString(type:number|undefined, subtype:number|undefined, ota_state:number|undefined): string {
+  if(!isOtaPartition(type, subtype)){
+    return "-"
+  }
   if(ota_state===undefined){
-    return "Unknown Partition State"
+    return "Unknown State"
   }
   return partitionstate.has(ota_state) ? partitionstate.get(ota_state)! : "Unknown State " + ota_state.toFixed(0);
 }
 
-export function partitionString(original: string | null| undefined, def: string) {
-  return original?.charAt(0) == '\0xFF' ? def : original
-}
-
-export function findPartitionSubtype(type:number|undefined, subtype:number|undefined): string {
+export function subtypeToString(type:number|undefined, subtype:number|undefined): string {
   if(type===undefined || subtype==undefined){
     return "Unknown Partition Type"
   }
@@ -67,6 +66,10 @@ export function findPartitionSubtype(type:number|undefined, subtype:number|undef
     default:
       return "Unknown Partition Type";
   }
+}
+
+function isOtaPartition(type:number|undefined, subtype:number|undefined):boolean{
+  return type==0x00 && subtype>=0x10 && subtype<0x20;
 }
 
 

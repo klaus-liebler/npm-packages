@@ -79,7 +79,6 @@ function parsePartitionsCSVFromFile(filePath: string): IPartitionTableEntry[] {
 
     entries.push(entry);
   }
-
   return entries;
 }
 
@@ -88,8 +87,7 @@ function parsePartitionsCSVFromFile(filePath: string): IPartitionTableEntry[] {
 
 export async function buildFirmware(c:Context) {
   const p = new P.Paths(c);
-  exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, (l)=>true);
-  console.log('Build-Prozess abgeschlossen!');
+  exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, (l)=>l.startsWith("Successfully created"));
 }
 /*
 With flash encryption enabled, the following types of data are encrypted by default:
@@ -100,7 +98,7 @@ Otadata
 All app type partitions
 */
 
-export async function encryptFirmware(c:Context) {
+export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c:Context) {
   const p = new P.Paths(c);
   [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s=>{
     espsecure(`encrypt_flash_data --aes_xts --keyfile ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(p.BUILD, s.file)}`, ()=>false);
@@ -108,7 +106,7 @@ export async function encryptFirmware(c:Context) {
   console.log('Encryption finished');
 }
 
-export function nvs_partition_gen_encrypt(c:Context, filterStdOut: (line:string)=>boolean):Section {
+export function nvs_partition_gen(c:Context, encrypt:boolean, filterStdOut: (line:string)=>boolean):Section {
   const p = new P.Paths(c);
   const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
 
@@ -119,12 +117,18 @@ export function nvs_partition_gen_encrypt(c:Context, filterStdOut: (line:string)
     throw new Error(`nvsPartitionInfo.Offset must be defined`)
   }
 
-  const cmd = `python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey "${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
-  exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
-  return {encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+  if(encrypt){
+    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey " NO THIS IS NOT THE FLASH KEY, THIS IS A SEPARATE KEY SPECIFIC FOR NVS ENCRYPTION, see https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32s3/api-reference/storage/nvs_encryption.html ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+    exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
+    return {encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+  }else{
+    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} generate  "${path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+    exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
+    return {encrypted:false, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+  }
 }
 
-export async function flashEncryptedFirmware(c:Context) {
+export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_is_encrypted:boolean) {
   const p = new P.Paths(c);
   const pi=await FindProbablePort();
   if(!pi){
@@ -133,19 +137,27 @@ export async function flashEncryptedFirmware(c:Context) {
 
   const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
   
-  sections.forEach(e=>e.file=e.file.replace(".bin", "-enc.bin"))//change filename to encrypted
+  sections.forEach(e=>e.file=path.join(p.BUILD,e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
+  c.f!.storage.file=path.join(p.BUILD, c.f!.storage.file)
   sections.push(c.f!.storage); //c.f!.storage is not encrypted!
 
   if(fs.existsSync(path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME))){
     const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
     
     if(!nvsPartitionInfo.Offset)throw new Error(`nvsPartitionInfo.Offset must be defined`)
-    //add nvs-partition only if it exists, filename needs not to be changed, as it is created directly encrypted with correct filename
-    sections.push({encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+    //FOR FUTURE: add nvs-partition only if it exists, filename needs not to be changed, as it is created directly encrypted with correct filename
+    //NOW: nvs-Partition is not encrypted
+    if(write_nvs){
+      if(nvs_is_encrypted){
+        sections.push({encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+      }else{
+        sections.push({encrypted:false, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+      }
+    }
   }
   
   sections.forEach(s=>{
-      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${path.join(p.BUILD, s.file)}`;
+      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
       esptool(cmd, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"))
     })
   console.log('Flash finished');

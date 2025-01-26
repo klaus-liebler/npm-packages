@@ -1,5 +1,5 @@
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { Namespace, OneWeekIn15Minutes, OneWeekIn15MinutesData, RequestSchedulerDelete, RequestSchedulerList, RequestSchedulerOpen, RequestSchedulerRename, RequestSchedulerSave, RequestWrapper, Requests, ResponseSchedulerList, ResponseSchedulerListItem, ResponseSchedulerOpen, ResponseWrapper, Responses, Schedule, SunRandom, eSchedule, uSchedule } from "@klaus-liebler/flatbuffer-object-definitions/scheduler";
+import { Namespace, OneWeekIn15Minutes, OneWeekIn15MinutesData, RequestSchedulerDelete, RequestSchedulerList, RequestSchedulerOpen, RequestSchedulerRename, RequestSchedulerSave, RequestWrapper, Requests, ResponseSchedulerList, ResponseSchedulerListItem, ResponseSchedulerOpen, ResponseWrapper, Responses, Schedule, SunRandom, eSchedule, uSchedule } from "@generated/flatbuffers_ts/scheduler";
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
 import { TemplateResult, html, render } from "lit-html";

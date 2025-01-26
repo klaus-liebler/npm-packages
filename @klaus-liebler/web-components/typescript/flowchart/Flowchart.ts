@@ -9,7 +9,7 @@ import * as flatbuffers from 'flatbuffers';
 import { SimulationManager } from "./SimulationManager";
 import { FlowchartData, OperatorData, LinkData } from "./FlowchartData";
 import { FilelistDialog, FilenameDialog, OkDialog } from "../dialog_controller";
-import { Namespace, RequestDebugData, RequestFbdRun, ResponseDebugData, ResponseFbdRun, Responses, ResponseWrapper } from "@klaus-liebler/flatbuffer-object-definitions/functionblock";
+import { Namespace, RequestDebugData, RequestFbdRun, ResponseDebugData, ResponseFbdRun, Responses, ResponseWrapper } from "@generated/flatbuffers_ts/functionblock";
 import { Menu, MenuItem, MenuManager } from "./MenuManager";
 
 //see devicemanager.hh

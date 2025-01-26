@@ -1,5 +1,5 @@
 import { TemplateResult, html} from 'lit-html';
-import { BooleanSetting, EnumSetting, IntegerSetting, Setting, SettingWrapper, StringSetting } from '@klaus-liebler/flatbuffer-object-definitions/usersettings';
+import { BooleanSetting, EnumSetting, IntegerSetting, Setting, SettingWrapper, StringSetting } from '@generated/flatbuffers_ts/usersettings';
 import * as flatbuffers from 'flatbuffers';
 import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
 

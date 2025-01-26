@@ -9,8 +9,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
     "@google/generative-ai": "^0.21.0",
-    "@klaus-liebler/flatbuffer-object-definitions": "file:../flatbuffer-object-definitions",
     "@klaus-liebler/commons": "file:../commons",
     "chart.js": "^4.4.7",
     "flatbuffers": "^25.1.21",

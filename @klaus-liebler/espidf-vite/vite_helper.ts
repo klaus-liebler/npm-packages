@@ -14,9 +14,10 @@ export async function buildAndCompressWebProject(projectRoot:string, outDir:stri
     },
     build: {
       //minify: true,
+      //sourcemap:"inline",
       cssCodeSplit: false,
       outDir: outDir,
-      emptyOutDir: true
+      emptyOutDir: true,
     }
   });
   const origPath = path.join(outDir, "index.html")

@@ -17,6 +17,10 @@ export function EscapeToVariableName(n: string) {
     return (<any>(n.toLocaleUpperCase())).replaceAll(" ", "_");
 }
 
+export function EscapeToVariableName2(n: string) {
+  return (<any>n).replaceAll(" ", "_").replaceAll("-", "_");
+}
+
 export function bigint2array(mc: number) {
     const ret = new Uint8Array(6);
     ret[5] = Number((mc) & 0xFF)

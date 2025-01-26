@@ -1,6 +1,5 @@
 export * as certificates from "./certificates";
 export * as context from "./context";
-export * as database from "./database";
 export * as esp32 from "./esp32";
 export * as idf from "./espidf";
 export * as flatbuffers from "./flatbuffers";
