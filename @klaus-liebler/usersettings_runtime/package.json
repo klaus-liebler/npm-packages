@@ -1,0 +1,18 @@
+{
+  "name": "@klaus-liebler/usersettings_runtime",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
+    "@klaus-liebler/commons": "file:../commons",
+    "flatbuffers": "^25.1.24",
+    "lit-html": "^3.2.1"
+  }
+}

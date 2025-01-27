@@ -7,6 +7,8 @@ import { Context } from "./context";
 import * as P from "./paths";
 import { ConfigGroup } from "../usersettings_codegeneration";
 import {IPackageJson} from "./package_json"
+import { execSync } from "node:child_process";
+import * as os from "node:os"
 
 function generate_partition_csv(pa:P.Paths, theusersettings:ConfigGroup[]) {
   
@@ -64,7 +66,7 @@ export async function generate_usersettings(c:Context, cfg:ConfigGroup[]) {
   // There, the usersettings_base.ts is totally different from the one used in the build process
   const USERSETTINGS_TS_FILE="usersettings.ts"
   fs.cpSync(pa.USERSETTINGS_PATH, path.join(pa.GENERATED_NVS_TS, USERSETTINGS_TS_FILE), { recursive: true });
-  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/web-components"`);
+  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/usersettings_runtime"`);
   const pj:IPackageJson={
     name:"@generated/usersettings",
     version:"0.0.1",
@@ -73,9 +75,17 @@ export async function generate_usersettings(c:Context, cfg:ConfigGroup[]) {
     author:"Generated",
     license:"No License",
     dependencies:{
-      "a":"b"
-
+      "@klaus-liebler/usersettings_runtime": "file:../../npm-packages/@klaus-liebler/usersettings_runtime"
     }
   }
   writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "package.json"),JSON.stringify(pj))
+    const filterStdOut =(l:string)=>true;
+    const cmd = `npm install`
+    console.info(`Executing ${cmd}`)
+    const stdout = execSync(cmd, {
+      cwd: pa.GENERATED_NVS_TS,
+      env: process.env
+    });
+    if (stdout)
+      stdout.toString().split(os.EOL).filter((v)=>filterStdOut(v)).forEach(v=>console.log(v.toString()))
 }

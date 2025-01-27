@@ -3,8 +3,8 @@ import path from "node:path";
 import * as fs from "node:fs/promises"
 import { EscapeToVariableName2, StringBuilderImpl } from '@klaus-liebler/commons';
 import { writeFileCreateDirLazy } from './utils';
-import { IIdfProjectInfo } from './espidf';
 import { IPackageJson } from './package_json';
+import * as os from "node:os"
 
 export async function flatbuffers_generate(options: string, inputFile: string, outputBaseDir: string) {
   const cmd = `flatc ${options} -o ${outputBaseDir} ${inputFile}`
@@ -49,4 +49,13 @@ export async function flatbuffers_generate_ts(sourceDir: string, parentDirectory
     }
   }
   writeFileCreateDirLazy(path.join(parentDirectory, projectName, "package.json"), JSON.stringify(pj));
+  const filterStdOut =(l:string)=>true;
+  const cmd = `npm install`
+  console.info(`Executing ${cmd}`)
+  const stdout = execSync(cmd, {
+    cwd: path.join(parentDirectory, projectName),
+    env: process.env
+  });
+  if (stdout)
+    stdout.toString().split(os.EOL).filter((v)=>filterStdOut(v)).forEach(v=>console.log(v.toString()))
 }
