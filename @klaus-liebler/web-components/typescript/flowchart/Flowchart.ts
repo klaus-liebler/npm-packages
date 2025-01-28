@@ -92,21 +92,21 @@ export class Flowchart {
     private positionRatio: number = 1;
     get PositionRatio() { return this.positionRatio; }
 
-    private flowchartContainerSvgSvg: SVGSVGElement;
+    private flowchartContainerSvgSvg!: SVGSVGElement;
     get Element() { return this.flowchartContainerSvgSvg; }
-    private linksLayer: SVGGElement;
+    private linksLayer!: SVGGElement;
     get LinkLayer() { return this.linksLayer; }
-    private operatorsLayer: SVGGElement;
+    private operatorsLayer!: SVGGElement;
     get OperatorsLayer() { return this.operatorsLayer; }
-    private operatorLibDiv: HTMLDivElement;
+    private operatorLibDiv!: HTMLDivElement;
     get ToolsLayer() { return this.operatorLibDiv; }
-    private tempLayer: SVGGElement;
-    private temporaryLink: SVGLineElement;
+    private tempLayer!: SVGGElement;
+    private temporaryLink!: SVGLineElement;
     private temporaryLinkSnapped = false;
-    private propertyGridHtmlDiv: HTMLDivElement;
+    private propertyGridHtmlDiv!: HTMLDivElement;
 
-    private markerArrow: SVGPathElement;
-    private markerCircle: SVGCircleElement;
+    private markerArrow: SVGPathElement|null=null;
+    private markerCircle: SVGCircleElement|null=null;
 
     private onResponseDebugData(d: ResponseDebugData) {
         if(this.mode!=FlowchartMode.DEBUG) return;
@@ -661,8 +661,8 @@ export class Flowchart {
         this.lastOutputConnectorClicked = c;
         let color = Flowchart.DATATYPE2COLOR.get(c.Type)
         if (!color) color = "BLACK";
-        this.markerArrow.style.fill = color;
-        this.markerCircle.style.fill = color;
+        this.markerArrow!.style.fill = color;
+        this.markerCircle!.style.fill = color;
         this.tempLayer.style.visibility = "visible";
     }
 

@@ -2,6 +2,7 @@
   "name": "@klaus-liebler/web-components",
   "version": "1.0.0",
   "main": "typescript/index.ts",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -9,11 +10,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
+    "flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
     "@google/generative-ai": "^0.21.0",
     "@klaus-liebler/commons": "file:../commons",
     "chart.js": "^4.4.7",
-    "flatbuffers": "^25.1.21",
-    "lit-html": "^3.2.1"
+    "flatbuffers": "25.1.21",
+    "lit-html": "^3.2.1",
+    "vite": "^6.0.11"
   }
 }

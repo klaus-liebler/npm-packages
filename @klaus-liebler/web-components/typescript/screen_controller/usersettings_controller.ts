@@ -25,7 +25,7 @@ class ConfigGroupRT{
     private Template=(itemTemplates:Array<TemplateResult<1>>)=>{
         return html`
     <div class="accordion">
-        <button ${ref(this.btnOpenClose)} @click=${(e)=>this.onBtnOpenCloseClicked(e)} style="display: flex; width:100%; align-items:center;">
+        <button ${ref(this.btnOpenClose)} @click=${(e:MouseEvent)=>this.onBtnOpenCloseClicked(e)} style="display: flex; width:100%; align-items:center;">
             <span ${ref(this.spanArrowContainer)} style="height: 100%;">▶</span>
             <span style="flex-grow:1; text-align:left; padding-left:10px">${this.groupCfg.displayName}</span>
             <input ${ref(this.btnSave)} style="height:30px;" @click=${(e:MouseEvent)=>this.onBtnSaveClicked(e)} disabled type="button" value="💾 Save Changes" />

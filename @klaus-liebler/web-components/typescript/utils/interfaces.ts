@@ -21,13 +21,13 @@ export interface IWebsocketMessageListener {
     OnMessage(namespace:number, byteBuffer: flatbuffers.ByteBuffer): void;
   }
 export interface IScreenControllerHost {
-   AddScreenController(url: string, urlPattern: RegExp, caption: TemplateResult<1>, controller:ScreenController);
+   AddScreenController(url: string, urlPattern: RegExp, caption: TemplateResult<1>, controller:ScreenController):void;
 }
 
 export interface IAppManagement {
     RegisterWebsocketMessageNamespace(listener: IWebsocketMessageListener, namespace: number): (() => void);
     Unregister(listener: IWebsocketMessageListener): void;
-    SendFinishedBuilder(namespace:number, b:flatbuffers.Builder, maxlockingTimeMs?: number);
+    SendFinishedBuilder(namespace:number, b:flatbuffers.Builder, maxlockingTimeMs?: number):void;
     ShowSnackbar(severity: Severity, text: string): void;
     ShowDialog(dialogController: DialogController): void;
 };

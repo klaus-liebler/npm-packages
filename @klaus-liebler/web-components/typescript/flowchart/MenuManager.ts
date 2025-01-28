@@ -1,7 +1,7 @@
 import { Html } from "../utils/common";
 
 export class MenuManager{
-    private fileInput:HTMLInputElement;
+
     constructor(private menus:Array<Menu>){}
 
     public Render(subcontainer: HTMLDivElement){
@@ -16,7 +16,7 @@ export class MenuManager{
         this.menus.forEach(m=>{m.Render(toolbar)});
     }
 
-    public CloseAllButOne(menuNotToCloseOrNull:Menu=null){
+    public CloseAllButOne(menuNotToCloseOrNull:Menu|null=null){
         this.menus.filter(m=>(!menuNotToCloseOrNull || m!=menuNotToCloseOrNull)).forEach(m=>{m.Hide()});
     }
 
@@ -24,12 +24,12 @@ export class MenuManager{
 }
 
 export class Menu {
-    private mm:MenuManager;
+    private mm!:MenuManager;
     public Introduce(mm:MenuManager){
         this.mm=mm;
     }
 
-    private DropContent:HTMLDivElement;
+    private DropContent!:HTMLDivElement;
     constructor(private caption:string, private menuItems:Array<MenuItem>) {
         
     }
@@ -58,8 +58,8 @@ export class Menu {
 }
 
 export class MenuItem {
-    private mm:MenuManager;
-    private m:Menu;
+    private mm!:MenuManager;
+    private m!:Menu;
     public Introduce(mm:MenuManager,m:Menu){
         this.mm=mm;
         this.m=m

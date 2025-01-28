@@ -40,7 +40,7 @@ export class Chatbot {
       </li>
     </ul>
     <footer>
-      <textarea ${ref(this.chatInput)} @input=${() => {this.onTextInput()}} @keydown=${(e)=>{this.onKeydown(e)}}  placeholder="Schreibe hier..." spellcheck="false" required></textarea>
+      <textarea ${ref(this.chatInput)} @input=${() => {this.onTextInput()}} @keydown=${(e:KeyboardEvent)=>{this.onKeydown(e)}}  placeholder="Schreibe hier..." spellcheck="false" required></textarea>
       <button @click=${() => {this.handleChat()}}>Send</button>
     </footer>
   </div>
@@ -50,7 +50,7 @@ export class Chatbot {
     this.chatInput.value!.style.height = `${this.chatInput.value!.scrollHeight}px`;
   }
 
-  private onKeydown(e){
+  private onKeydown(e:KeyboardEvent){
     // If Enter key is pressed without Shift key and the window 
       // width is greater than 800px, handle the chat
       if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 800) {
@@ -63,23 +63,23 @@ export class Chatbot {
     this.inputInitHeight = this.chatInput.value!.scrollHeight;
   }
 
-  private createChatLi(message, incoming: boolean) {
+  private createChatLi(message:string, incoming: boolean) {
     // Create a chat <li> element with passed message and className
     const chatLi = document.createElement("li");
     chatLi.classList.add("chat", `${incoming ? "incoming" : "outgoing"}`);
     chatLi.innerHTML = incoming ? `<span>🤖</span><p></p>` : `<p></p>`;
-    chatLi.querySelector("p").textContent = message;
+    chatLi.querySelector("p")!.textContent = message;
     return chatLi; // return chat <li> element
   }
-  private async generateResponse(chatElement, prompt: string) {
-    const messageElement = chatElement.querySelector("p");
+  private async generateResponse(chatElement:Element, prompt: string) {
+    const messageElement = chatElement.querySelector("p")!;
     // Define the properties and message for the API request
 
     try {
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       messageElement.textContent = response.text();
-    } catch (error) {
+    } catch (error:any) {
       // Handle error
       messageElement.classList.add("error");
       messageElement.textContent = error.message;

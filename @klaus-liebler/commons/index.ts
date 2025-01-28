@@ -32,7 +32,7 @@ export function bigint2array(mc: number) {
     return ret;
 }
 
-export function strInterpolator(str, values_flat: any) {
+export function strInterpolator(str:string, values_flat: any) {
   return str.replace(/\${(.*?)}/g, (_match, p1) => {
       if (p1.includes(".")) {
           const keyPath = p1.split(".");

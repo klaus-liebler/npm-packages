@@ -21,7 +21,7 @@ export class TimeseriesController extends ScreenController {
     public Template = () => html`<h1>Timeseries Sconds</h1><p ${ref(this.paramPara)}>Value=</p><canvas ${ref(this.chartDiv)}></canvas>`
 
     private ParamsTemplate = ()=>html`id=${this.match.groups!["id"]} val=${this.match.groups!["val"]}`
-    match: RegExpMatchArray;
+    private match!: RegExpMatchArray;
 
     OnMessage(_namespace:number, _bb: flatbuffers.ByteBuffer): void {
         throw new Error("TimeseriesController does not expect 'normal' messages");
@@ -82,7 +82,7 @@ export class TimeseriesController extends ScreenController {
         }
 
         if(granularity==TimeGranularity.TEN_SECONDS){
-            this.chartSeconds!.update({labels, series});
+            //this.chartSeconds!.update({labels, series});
         }
     }
 

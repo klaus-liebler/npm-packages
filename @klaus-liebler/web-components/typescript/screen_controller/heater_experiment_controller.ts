@@ -34,7 +34,7 @@ export class HeaterExperimentController extends ScreenController {
     private frmClosedloop: Ref<HTMLFormElement> = createRef();
 
     private timer: number | undefined;
-    private chart: Chart;
+    private chart!: Chart;
     private chartCanvas: Ref<HTMLCanvasElement> = createRef();
 
     private counter = 10 ^ 6;

@@ -44,7 +44,7 @@ const partitionsubtypesdata = new Map<number, string>([
   [0x82, "ESP_PARTITION_SUBTYPE_DATA_SPIFFS"],// = 0x82,                         
 ]);
 
-export function otaStateToString(type:number|undefined, subtype:number|undefined, ota_state:number|undefined): string {
+export function otaStateToString(type:number, subtype:number, ota_state:number|undefined): string {
   if(!isOtaPartition(type, subtype)){
     return "-"
   }
@@ -68,7 +68,7 @@ export function subtypeToString(type:number|undefined, subtype:number|undefined)
   }
 }
 
-function isOtaPartition(type:number|undefined, subtype:number|undefined):boolean{
+function isOtaPartition(type:number, subtype:number):boolean{
   return type==0x00 && subtype>=0x10 && subtype<0x20;
 }
 

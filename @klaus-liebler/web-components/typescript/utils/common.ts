@@ -94,7 +94,7 @@ export enum Severity {
     {
         let svg = <SVGSVGElement>Svg(parent, "svg", [], ["icon", "icon-"+iconname]);
         let use =Svg(svg, "use", [], []);
-        use.setAttributeNS(this.XLINKNS, "href", "#icon-"+iconname);
+        use.setAttributeNS(XLINKNS, "href", "#icon-"+iconname);
         parent.appendChild(svg);
         return svg;
     }

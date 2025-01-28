@@ -52,8 +52,8 @@ export class PredefinedSchedule extends ScheduleItem{
 }
 
 export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogHandler{
-    private offsetMinutes: number;
-    private randomMinutes: number;
+    private offsetMinutes: number=0;
+    private randomMinutes: number=0;
     constructor(name:string, appManagement:IAppManagement){
         super(name, "SunRandom", appManagement);
     }
@@ -334,11 +334,11 @@ export class SunRandomScheduleEditorDialog extends DialogController {
 }
 
 export interface iWeeklyScheduleDialogHandler{
-    handleWeeklyScheduleDialog(ok: boolean, referenceHandle:any, value: Array<number>|null);
+    handleWeeklyScheduleDialog(ok: boolean, referenceHandle:any, value: Array<number>|null):void;
 }
 
 export interface iSunRandomDialogHandler{
-    handleSunRandomDialog(ok: boolean, offsetMinutes: number, randomMinutes: number);
+    handleSunRandomDialog(ok: boolean, offsetMinutes: number, randomMinutes: number):void;
 }
 
 export class WeeklyScheduleDialog extends DialogController {
@@ -419,7 +419,7 @@ export class WeeklyScheduleDialog extends DialogController {
 
     private rdoChange(e:MouseEvent){
         var value:string =(<HTMLInputElement>e.target).value
-        this.markingMode=MarkingMode[value];
+        this.markingMode=<any>MarkingMode[<any>value];
     }
 
     private copy(sourceDay:number, destinationDays:Array<number>){
@@ -466,7 +466,7 @@ export class WeeklyScheduleDialog extends DialogController {
     
 
     public Template = () => {
-        const weekdayTemplate = (day_name, day_index) => html`${[...Array(96)].map((name, num) =>
+        const weekdayTemplate = (day_name:string, day_index:number) => html`${[...Array(96)].map((name, num) =>
             html`<td @mousedown=${(e: MouseEvent) => this.tdMousedown(e)} @mouseenter=${(e: MouseEvent) => this.tdMouseenter(e)} @mouseup=${(e: MouseEvent) => this.tdMouseup(e)}></td>`
         )}`
         const rowTemplates = new Array<TemplateResult<1>>();

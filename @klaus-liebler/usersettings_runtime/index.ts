@@ -84,7 +84,7 @@ export abstract class ConfigItemRT {
     abstract ReadFlatbuffersObjectAndSetValueInDom(sw: SettingWrapper): boolean;
     abstract HasAChangedValue(): boolean;
     protected abstract CoreInputTemplate:()=>TemplateResult<1>;
-    protected abstract btnResetClicked();
+    protected abstract btnResetClicked():void;
 }
 
 
