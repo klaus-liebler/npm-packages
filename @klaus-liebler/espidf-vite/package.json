@@ -1,5 +1,6 @@
 {
   "name": "@klaus-liebler/espidf-vite",
+  "name_alternative": "@klaus-liebler/espidf-vite-secure-build-tools",
   "version": "1.0.0",
   "main": "index.ts",
   "type": "module",
