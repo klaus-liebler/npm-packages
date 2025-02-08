@@ -12,7 +12,6 @@ export async function flatbuffers_generate(options: string, inputFile: string, o
   execSync(cmd, {
     env: process.env
   });
-
 }
 
 
@@ -45,7 +44,7 @@ export async function flatbuffers_generate_ts(sourceDir: string, parentDirectory
     "license": "ISC",
     "description": "",
     "dependencies": {
-      "flatbuffers": "^25.1.21"
+      "flatbuffers": "25.1.24"
     }
   }
   writeFileCreateDirLazy(path.join(parentDirectory, projectName, "package.json"), JSON.stringify(pj));

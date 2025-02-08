@@ -1,5 +1,4 @@
-import { UserConfig, PluginOption } from "vite"
-import { OutputChunk, OutputAsset, OutputOptions, NormalizedOutputOptions, OutputBundle} from "rollup"
+
 import { minify } from "esbuild-minify-templates"
 
 export type Config = {
@@ -49,7 +48,7 @@ export function viteSingleFile({
 	useRecommendedBuildConfig = true,
 	removeViteModuleLoader = false,
 	deleteInlinedFiles = true,
-}: Config = defaultConfig): PluginOption {
+}: Config = defaultConfig): any {
 
 	function warnNotInlined(filename: string) {
 		console.debug(`NOTE: asset not inlined: ${filename}`)
@@ -59,21 +58,21 @@ export function viteSingleFile({
 		name: "vite:singlefile",
 		config: useRecommendedBuildConfig ? _useRecommendedBuildConfig : undefined,
 		enforce: "post",
-		generateBundle: (options: NormalizedOutputOptions, bundle: OutputBundle, isWrite: boolean) => {
+		generateBundle: (options: any, bundle: any, isWrite: boolean) => {
 			console.debug("\n")
-			var html = new Map<string, OutputAsset>();
-			var css = new Map<string, OutputAsset>();
-			var js = new Map<string, OutputChunk>();
-			var other = new Map<string, OutputAsset | OutputChunk>();
+			var html = new Map<string, any>();
+			var css = new Map<string, any>();
+			var js = new Map<string, any>();
+			var other = new Map<string, any | any>();
 			for (const [filename, asset] of Object.entries(bundle)) {
 				if (isHtmlFile.test(filename)) {
-					html.set(filename, asset as OutputAsset);
+					html.set(filename, asset as any);
 				} else if (isCssFile.test(filename)) {
-					css.set(filename, asset as OutputAsset);
+					css.set(filename, asset as any);
 				} else if (isJsFile.test(filename)) {
-					js.set(filename, asset as OutputChunk);
+					js.set(filename, asset as any);
 				} else {
-					other.set(filename, asset);
+					other.set(filename, asset as any);
 				}
 			}
 			const bundlesToDelete = [] as string[]
@@ -118,7 +117,7 @@ const _removeViteModuleLoader = (html: string) =>
 	html.replace(/(<script type="module" crossorigin>\s*)\(function(?: polyfill)?\(\)\s*\{[\s\S]*?\}\)\(\);/, '<script type="module">')
 
 // Modifies the Vite build config to make this plugin work well.
-const _useRecommendedBuildConfig = (config: UserConfig) => {
+const _useRecommendedBuildConfig = (config: any) => {
 	if (!config.build) config.build = {}
 	// Ensures that even very large assets are inlined in your JavaScript.
 	config.build.assetsInlineLimit = () => true
@@ -136,14 +135,14 @@ const _useRecommendedBuildConfig = (config: UserConfig) => {
 	if (!config.build.rollupOptions) config.build.rollupOptions = {}
 	if (!config.build.rollupOptions.output) config.build.rollupOptions.output = {}
 
-	const updateOutputOptions = (out: OutputOptions) => {
+	const updateOutputOptions = (out: any) => {
 		// Ensure that as many resources as possible are inlined.
 		out.inlineDynamicImports = true
 	}
 
 	if (Array.isArray(config.build.rollupOptions.output)) {
-		for (const o in config.build.rollupOptions.output) updateOutputOptions(o as OutputOptions)
+		for (const o in config.build.rollupOptions.output) updateOutputOptions(o as any)
 	} else {
-		updateOutputOptions(config.build.rollupOptions.output as OutputOptions)
+		updateOutputOptions(config.build.rollupOptions.output as any)
 	}
 }

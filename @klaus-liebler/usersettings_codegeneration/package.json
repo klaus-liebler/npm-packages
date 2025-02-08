@@ -1,5 +1,6 @@
 {
   "name": "@klaus-liebler/usersettings_codegeneration",
+  "description": "",
   "version": "1.0.0",
   "main": "index.ts",
   "type": "module",
@@ -8,8 +9,6 @@
   },
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@klaus-liebler/commons": "file:../commons"
   }
 }

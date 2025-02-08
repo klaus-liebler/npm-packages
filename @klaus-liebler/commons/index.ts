@@ -1,8 +1,24 @@
-//only functions / classes / interfaces that depend on NOTHING (to dependencies to node.js or to other libs)
+//only functions / classes / interfaces that depend on NOTHING (no dependencies to node.js or to other libs)
 
 export interface IStringBuilder {
     AppendLine(line: string): void;
 }
+
+declare global {
+  interface Map<K, V> {
+    getOrAdd(key: K, valueFactory: () => V): V;
+    
+  }
+}
+Map.prototype.getOrAdd = function <K, V>(this: Map<K, V>, key: K, valueFactory: () => V): V {
+    if (this.has(key)) {
+      return this.get(key) as V;
+    }
+    const value = valueFactory();
+    this.set(key, value);
+    return value;
+  };
+
 
 
 export class SearchReplace {
