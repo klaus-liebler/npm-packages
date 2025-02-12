@@ -1,6 +1,6 @@
 import { TemplateResult, html } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { Severity, severity2class, severity2symbol } from "./utils/common";
+import { Severity, severity2class, severity2symbol } from "@klaus-liebler/commons";
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import folderOpen from '../svgs/solid/folder-open.svg?raw'
 import trash from '../svgs/solid/trash.svg?raw'
@@ -69,11 +69,11 @@ export abstract class SimpleDialogWithInputController extends SimpleDialogContro
 
 export class FilenameDialog extends SimpleDialogWithInputController {
 
-    constructor(messageText: string, handler?: ((ok: boolean, value: string) => any)) {
+    constructor(messageText: string, handler?: ((ok: boolean, value: string) => any), private predefinedTextContent:string="") {
         super("Enter Filename", messageText, handler)
     }
 
-    protected mainTemplate() { return html`<p> ${this.messageText}</p><p><input ${ref(this.inputElement)} @keyup=${(e: KeyboardEvent) => this.inpTextKeyup(e)} type="text" pattern="^[A-Za-z0-9]{1,10}$"></input></p>` }
+    protected mainTemplate() { return html`<p> ${this.messageText}</p><p><input ${ref(this.inputElement)} @keyup=${(e: KeyboardEvent) => this.inpTextKeyup(e)} type="text" pattern="^[A-Za-z0-9]{1,10}$" value="${this.predefinedTextContent}"></input></p>` }
 }
 
 export class PasswordDialog extends SimpleDialogWithInputController {

@@ -1,5 +1,5 @@
 {
-  "name": "@klaus-liebler/sensact",
+  "name": "@klaus-liebler/web-components-sensact",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -10,8 +10,9 @@
   "description": "",
   "dependencies": {
     "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
-    "@klaus-liebler/sensact-base": "file:../sensact-base",
+    "@generated/sensact_sendCommandImplementation": "file:../../../generated/sensact_sendCommandImplementation",
     "@klaus-liebler/commons": "file:../commons",
+    "@klaus-liebler/sensact-base": "file:../sensact-base",
     "@klaus-liebler/svgs": "file:../svgs",
     "@klaus-liebler/web-components": "file:../web-components",
     "flatbuffers": "25.1.24",

@@ -1,9 +1,9 @@
 
 import * as flatbuffers from "flatbuffers";
 import { DialogController } from "../dialog_controller";
-import { Severity } from "./common";
 import { TemplateResult } from "lit-html";
 import { ScreenController } from "../screen_controller/screen_controller";
+import { Severity } from "@klaus-liebler/commons";
 
 export interface IDialogController____ {
     ShowDialog(pHandler?: ((ok: boolean, value: string) => any)): void;

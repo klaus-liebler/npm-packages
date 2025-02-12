@@ -16,12 +16,6 @@ export abstract class NamespaceAndHandler{
     public abstract Handle(buffer: flatbuffers.ByteBuffer, sender: ISender);
 }
 
-export * as chatbot from "./handlers/chatbot"
-export * as functionblock from "./handlers/functionblock"
-export * as heaterexperiment from "./handlers/heaterexperiment"
-export * as system from "./handlers/system"
-export * as webmanager from "./handlers/webmanager"
-
 const WEBSERVER_PORT = 3000;
 const AUTHSERVER_PORT = 3001;
 var websocket_server:weso.WebSocketServer;

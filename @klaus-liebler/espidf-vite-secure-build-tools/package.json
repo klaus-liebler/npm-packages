@@ -1,8 +1,6 @@
 {
-  "name": "@klaus-liebler/espidf-vite",
-  "name_alternative": "@klaus-liebler/espidf-vite-secure-build-tools",
+  "name": "@klaus-liebler/espidf-vite-secure-build-tools",
   "version": "1.0.0",
-  "main": "index.ts",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

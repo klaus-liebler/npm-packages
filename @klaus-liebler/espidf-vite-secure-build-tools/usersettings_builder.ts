@@ -7,6 +7,7 @@ import { Context } from "./context";
 import * as P from "./paths";
 import { ConfigGroup } from "../usersettings_codegeneration";
 import {IPackageJson} from "./package_json"
+import * as npm from "./npm"
 import { execSync } from "node:child_process";
 import * as os from "node:os"
 
@@ -65,27 +66,20 @@ export async function generate_usersettings(c:Context, cfg:ConfigGroup[]) {
   //this is necessary to copy the usersettings (the project specific file, that contains all settings) in the context of the browser client project. 
   // There, the usersettings_base.ts is totally different from the one used in the build process
   const USERSETTINGS_TS_FILE="usersettings.ts"
-  fs.cpSync(pa.USERSETTINGS_PATH, path.join(pa.GENERATED_NVS_TS, USERSETTINGS_TS_FILE), { recursive: true });
+  fs.cpSync(pa.P_USERSETTINGS_PATH, path.join(pa.GENERATED_NVS_TS, USERSETTINGS_TS_FILE), { recursive: true });
   writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/usersettings_runtime"`);
-  const pj:IPackageJson={
-    name:"@generated/usersettings",
-    version:"0.0.1",
-    description:"Generated during Build",
-    main: USERSETTINGS_TS_FILE,
-    author:"Generated",
-    license:"No License",
-    dependencies:{
-      "@klaus-liebler/usersettings_runtime": "file:../../npm-packages/@klaus-liebler/usersettings_runtime"
+  npm.CreateAndInstallNpmProjectLazily(
+    pa.GENERATED_NVS_TS,
+    {
+      name:"@generated/usersettings",
+      version:"0.0.1",
+      description:"Generated during Build",
+      main: USERSETTINGS_TS_FILE,
+      author:"Generated",
+      license:"No License",
+      dependencies:{
+        "@klaus-liebler/usersettings_runtime": "file:../../npm-packages/@klaus-liebler/usersettings_runtime"
+      }
     }
-  }
-  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "package.json"),JSON.stringify(pj))
-    const filterStdOut =(l:string)=>true;
-    const cmd = `npm install`
-    console.info(`Executing ${cmd}`)
-    const stdout = execSync(cmd, {
-      cwd: pa.GENERATED_NVS_TS,
-      env: process.env
-    });
-    if (stdout)
-      stdout.toString().split(os.EOL).filter((v)=>filterStdOut(v)).forEach(v=>console.log(v.toString()))
+  );
 }

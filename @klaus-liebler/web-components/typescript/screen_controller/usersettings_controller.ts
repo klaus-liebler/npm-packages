@@ -2,12 +2,12 @@ import {Namespace, RequestGetUserSettings, RequestSetUserSettings, RequestWrappe
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
 
-import { BooleanItemRT, ConfigGroup, ConfigItemRT, EnumItemRT, IntegerItemRT, StringItemRT, ValueUpdater } from "../utils/usersettings_base_classes";
+import { BooleanItemRT, ConfigGroup, ConfigItemRT, EnumItemRT, IntegerItemRT, StringItemRT, ValueUpdater } from "@klaus-liebler/usersettings_runtime";
 import { TemplateResult, html, render } from "lit-html";
-import { Severity } from "../utils/common";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { IAppManagement } from "../utils/interfaces";
 import { OkDialog } from "../dialog_controller";
+import { Severity } from "@klaus-liebler/commons";
 
 
 class ConfigGroupRT{
@@ -25,12 +25,12 @@ class ConfigGroupRT{
     private Template=(itemTemplates:Array<TemplateResult<1>>)=>{
         return html`
     <div class="accordion">
-        <button ${ref(this.btnOpenClose)} @click=${(e:MouseEvent)=>this.onBtnOpenCloseClicked(e)} style="display: flex; width:100%; align-items:center;">
+        <button ${ref(this.btnOpenClose)} @click=${(e:MouseEvent)=>this.onBtnOpenCloseClicked(e)}>
             <span ${ref(this.spanArrowContainer)} style="height: 100%;">▶</span>
-            <span style="flex-grow:1; text-align:left; padding-left:10px">${this.groupCfg.displayName}</span>
-            <input ${ref(this.btnSave)} style="height:30px;" @click=${(e:MouseEvent)=>this.onBtnSaveClicked(e)} disabled type="button" value="💾 Save Changes" />
-            <input ${ref(this.btnUpdate)} style="height:30px;" @click=${(e:MouseEvent)=>this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
-            <input ${ref(this.btnReset)} style="height:30px;" type="button" value=" 🗑 Reset Values" />
+            <span style="flex-grow:1; text-align:left; padding-left:10px;">${this.groupCfg.displayName}</span>
+            <input ${ref(this.btnSave)}  @click=${(e:MouseEvent)=>this.onBtnSaveClicked(e)} disabled type="button" value="💾 Save Changes" />
+            <input ${ref(this.btnUpdate)} @click=${(e:MouseEvent)=>this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
+            <input ${ref(this.btnReset)} @click=${(e:MouseEvent)=>this.onBtnResetClicked(e)} type="button" value=" 🗑 Reset Values" />
         </button>
         <div ${ref(this.divPanel)} style="display:none">
             <table style="margin-top:0px">
@@ -93,6 +93,11 @@ class ConfigGroupRT{
 
     private onBtnUpdateClicked(e:MouseEvent){
         this.sendRequestGetUserSettings();
+        e.stopPropagation()
+    }
+
+    private onBtnResetClicked(e:MouseEvent){
+        this.onBtnUpdateClicked(e)
         e.stopPropagation()
     }
     public BuildRtAndRender(templates:Array<TemplateResult<1>>, updater:ValueUpdater) {

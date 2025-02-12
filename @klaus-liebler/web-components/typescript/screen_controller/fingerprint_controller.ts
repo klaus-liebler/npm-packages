@@ -2,7 +2,7 @@ import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { Finger, Namespace, NotifyEnrollNewFinger, NotifyFingerDetected, RequestCancelInstruction, RequestDeleteAllFingers, RequestDeleteFinger, RequestEnrollNewFinger, RequestFingerActionManually, RequestFingerprintSensorInfo, RequestFingers, RequestRenameFinger, RequestStoreFingerAction, RequestStoreFingerSchedule, RequestWrapper, Requests, ResponseDeleteFinger, ResponseEnrollNewFinger, ResponseFingerprintSensorInfo, ResponseFingers, ResponseWrapper, Responses } from "@generated/flatbuffers_ts/fingerprint";
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
-import { Html, Severity } from "../utils/common";
+import { Html } from "../utils/common";
 import { html } from "lit-html";
 
 import square_plus from '../../svgs/solid/square-plus.svg?raw'
@@ -14,6 +14,7 @@ import info from '../../svgs/solid/info.svg?raw'
 import music from '../../svgs/solid/music.svg?raw'
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import { FilenameDialog, OkCancelDialog, OkDialog } from "../dialog_controller";
+import { Severity } from "@klaus-liebler/commons";
 
 enum RET {
     OK = 0x00,                           //!< Command execution is complete
@@ -197,7 +198,7 @@ export class FingerprintScreenController extends ScreenController {
             this.appManagement.ShowDialog(new FilenameDialog("Enter new finger name", (ok, value) => {
                 if (!ok) return;
                 this.sendRequestRenameFinger(f!.index(), f!.name()!, value);
-            }))
+            }, f.name()!))
         }
     }
 

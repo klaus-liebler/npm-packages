@@ -5,10 +5,8 @@ import * as P from "./paths";
 import fs from "node:fs";
 import path from "node:path";
 export class ContextConfig {
-  //generatedDirectory: NUR!!! hier darf generierter Code hingeschrieben werden; nichts an anderer Stelle
-  //idfProjectDirectory: benötigt, weil hier im Build-Verzeichnis einige JSON-Dateien liegen, die man einlesen möchte
-  //flatbufferSchemaDirs: Alle fbs-Dateien in diesen Verzeichnissen werden übersetzt
-  constructor(public readonly generatedDirectory, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
+
+  constructor(public readonly generatedDirectory:string, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
 }
 export class Context {
 
@@ -22,7 +20,7 @@ export class Context {
   private static instance: Context | null;
   public static async get(config: ContextConfig, updateWithCurrentlyConnectedBoard: boolean = false): Promise<Context> {
     var mac: number = 0;
-    const currentBoardInfoJsonPath = path.join(config.idfProjectDirectory, P.CURRENT_BOARD_SUBDIR, P.INFO_JSON_FILENAME)
+    const currentBoardInfoJsonPath = path.join(config.idfProjectDirectory, P.BOARD_INFO_JSON_FILENAME)
 
     if (!updateWithCurrentlyConnectedBoard && Context.instance) {
       //wenn ich nix aktualisieren soll und der Context bereits erzeugt wurde -->ggf. "i" und "f" nachtragen und dann raus hier
@@ -63,7 +61,7 @@ export class Context {
     var boardPath = P.Paths.boardSpecificPath(config.boardsDirectory, mac);
     fs.mkdirSync(boardPath, { recursive: true });
 
-    const boardInfoJsonPath = P.Paths.boardSpecificPath(config.boardsDirectory, mac, P.INFO_JSON_FILENAME);
+    const boardInfoJsonPath = P.Paths.boardSpecificPath(config.boardsDirectory, mac, P.BOARD_INFO_JSON_FILENAME);
     var boardInfo: IBoardInfo;
     if (!fs.existsSync(boardInfoJsonPath)) {
       console.info(`There was no info.json in path ${boardInfoJsonPath}. Create it with default settings`);
@@ -89,6 +87,7 @@ export class Context {
     const i = idf.GetProjectDescription(config.idfProjectDirectory);
     const f = idf.GetFlashArgs(config.idfProjectDirectory)
     Context.instance = new Context(config, boardInfo, i, f);
+    fs.cpSync(boardInfoJsonPath, currentBoardInfoJsonPath);
     return Context.instance!;
   }
 }

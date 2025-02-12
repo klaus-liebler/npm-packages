@@ -1,4 +1,4 @@
-import { StringNumberTuple } from "../utils/common";
+import { StringNumberTuple } from "@klaus-liebler/commons";
 export default function(){ return [
 	new StringNumberTuple("Kein Sound", 0),
 	new StringNumberTuple("Sprache: CO2 Alarm", 1),

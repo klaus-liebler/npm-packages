@@ -1,7 +1,7 @@
 import * as flatbuffers from "flatbuffers"
-import { wifimanager } from "@klaus-liebler/flatbuffer-object-definitions"
+import * as wifimanager from "@generated/flatbuffers_ts/wifimanager"
 
-import { ISender, NamespaceAndHandler } from "..";
+import { ISender, NamespaceAndHandler } from "./utils";
 
 const AP_GOOD = "Connect to AP -50dB Auth=2";
 const AP_BAD = "Connect to AP -100dB Auth=2";

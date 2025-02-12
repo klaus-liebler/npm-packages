@@ -3,7 +3,7 @@ import { FlowchartCompiler, HashAndBufAndMaps } from "./FlowchartCompiler";
 import { FlowchartLink } from "./FlowchartLink";
 import { FlowchartOperator, TypeInfo } from "./FlowchartOperator";
 import * as operatorimpl from "./FlowchartOperatorImpl";
-import { ColorNumColor2ColorDomString, EventCoordinatesInSVG, Html, KeyValueTuple, Severity, Svg } from "../utils/common";
+import { ColorNumColor2ColorDomString, EventCoordinatesInSVG, Html, Svg } from "../utils/common";
 import { IAppManagement } from "../utils/interfaces";
 import * as flatbuffers from 'flatbuffers';
 import { SimulationManager } from "./SimulationManager";
@@ -11,6 +11,7 @@ import { FlowchartData, OperatorData, LinkData } from "./FlowchartData";
 import { FilelistDialog, FilenameDialog, OkDialog } from "../dialog_controller";
 import { Namespace, RequestDebugData, RequestFbdRun, ResponseDebugData, ResponseFbdRun, Responses, ResponseWrapper } from "@generated/flatbuffers_ts/functionblock";
 import { Menu, MenuItem, MenuManager } from "./MenuManager";
+import { KeyValueTuple, Severity } from "@klaus-liebler/commons";
 
 //see devicemanager.hh
 const FBDSTORE_BASE_DIRECTORY = "/spiffs/fbdstore/";    

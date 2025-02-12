@@ -2,12 +2,12 @@
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
 import { Namespace, RequestNetworkInformation, RequestWifiConnect, RequestWifiDisconnect, Requests, Responses, ResponseNetworkInformation, ResponseWifiConnect, ResponseWrapper, RequestWrapper } from "@generated/flatbuffers_ts/wifimanager";
-import { Severity, ip4_2_string } from "../utils/common";
 //import icon_lock from '../../assets/icon-lock.svg'
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import { OkCancelDialog, OkDialog, PasswordDialog } from "../dialog_controller";
+import { ip4_2_string, Severity } from "@klaus-liebler/commons";
 
 
 

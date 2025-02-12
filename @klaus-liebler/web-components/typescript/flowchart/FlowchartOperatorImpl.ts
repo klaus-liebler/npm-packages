@@ -2,9 +2,10 @@ import {FlowchartOperator, TypeInfo, PositionType, SingletonType} from "./Flowch
 import {Flowchart} from "./Flowchart";
 import {FlowchartInputConnector, FlowchartOutputConnector, ConnectorType} from "./FlowchartConnector";
 import { SerializeContextAndAdressMap } from "./FlowchartCompiler";
-import {ColorDomString2ColorNum, Html, InputColor, InputFloatNumber, InputIntegerNumber, InputSelect, KeyValueTuple, StringNumberTuple} from "../utils/common";
+import {ColorDomString2ColorNum, Html, InputColor, InputFloatNumber, InputIntegerNumber, InputSelect} from "../utils/common";
 import * as Song from "./Songs";
 import { SimulationContext } from "./SimulationContext";
+import { KeyValueTuple, StringNumberTuple } from "@klaus-liebler/commons";
 
 const Basic="Basic";
 const Arithmetic="Arithmetic";

@@ -101,7 +101,7 @@ All app type partitions
 export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c:Context) {
   const p = new P.Paths(c);
   [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s=>{
-    espsecure(`encrypt_flash_data --aes_xts --keyfile ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(p.BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(p.BUILD, s.file)}`, ()=>false);
+    espsecure(`encrypt_flash_data --aes_xts --keyfile ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(p.P_BUILD, s.file)}`, ()=>false);
   })
   console.log('Encryption finished');
 }
@@ -137,8 +137,8 @@ export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_i
 
   const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
   
-  sections.forEach(e=>e.file=path.join(p.BUILD,e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
-  c.f!.storage.file=path.join(p.BUILD, c.f!.storage.file)
+  sections.forEach(e=>e.file=path.join(p.P_BUILD,e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
+  c.f!.storage.file=path.join(p.P_BUILD, c.f!.storage.file)
   sections.push(c.f!.storage); //c.f!.storage is not encrypted!
 
   if(fs.existsSync(path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME))){
@@ -160,17 +160,33 @@ export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_i
       const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
       esptool(cmd, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"))
     })
-  console.log('Flash finished');
+  console.log('Flash (encrypted) finished');
 }
 
-export async function flashFirmware(c:Context) {
+export async function flashFirmware(c:Context, write_nvs:boolean, write_storage:boolean) {
   const p = new P.Paths(c);
   const pi=await FindProbablePort();
   if(!pi){
     throw Error("No connected Board found")
   }
-  exec_in_idf_terminal(`idf.py -p ${pi.path} flash`, c.c.idfProjectDirectory, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"));
-  console.log('Flash-Prozess abgeschlossen!');
+
+  const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
+  if(write_storage){
+    sections.push(c.f!.storage);
+  }
+  sections.forEach(e=>e.file=path.join(p.P_BUILD,e.file))//add path to filename
+  if(write_nvs){
+    const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
+    if(!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
+    if(!fs.existsSync(path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
+    sections.push({encrypted:false, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+  }
+  
+  sections.forEach(s=>{
+      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
+      esptool(cmd, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"))
+    })
+  console.log('Flash (not encrypted) finished');
 }
 
 

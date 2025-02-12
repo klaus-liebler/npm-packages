@@ -13,6 +13,7 @@
     "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
     "@google/generative-ai": "^0.21.0",
     "@klaus-liebler/commons": "file:../commons",
+    "@klaus-liebler/usersettings_runtime": "file:../usersettings_runtime",
     "chart.js": "^4.4.7",
     "flatbuffers": "25.1.24",
     "lit-html": "^3.2.1",

@@ -6,6 +6,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts"
+    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
+    "@klaus-liebler/commons": "file:../commons"
   }
 }

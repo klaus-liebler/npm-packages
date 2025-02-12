@@ -1,12 +1,36 @@
 import { html } from "lit-html";
-import { ResponseWrapper, ResponseJournal, RequestJournal, RequestWrapper, Requests, Responses } from "../../generated/flatbuffers/webmanager";
+import { ResponseWrapper, ResponseJournal, RequestJournal, RequestWrapper, Requests, Responses, Namespace } from "@generated/flatbuffers_ts/journal";
 import { MyFavouriteDateTimeFormat } from "../utils/common";
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from "flatbuffers"
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
+import { zzfx } from "../zzfx"; 
 
-export class WeblogScreenController extends ScreenController {
-    onMessage(messageWrapper: ResponseWrapper): void {
+export class JournalController extends ScreenController {
+
+    private tblLogs:Ref<HTMLTableSectionElement> = createRef();
+
+    public OnCreate(): void {
+        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value)
+    }
+    protected OnFirstStart(): void {
+        this.sendRequestJournal();
+    }
+    protected OnRestart(): void {
+        this.sendRequestJournal();
+    }
+    OnPause(): void {
+        
+    }
+
+
+    public OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
+        if(namespace!=Namespace.Value){
+            console.error(`journal controller namespace problem: ${namespace}!=${Namespace.Value}`)
+            return;
+        }
+        zzfx(...[,,80,.3,.4,.7,2,.1,-0.73,3.42,-430,.09,.17,,,,.19]);
+        let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
         let res = <ResponseJournal>messageWrapper.response(new ResponseJournal());
         this.tblLogs.value!.innerText="";
         for (let i = 0; i < res.journalItemsLength(); i++) {
@@ -27,30 +51,12 @@ export class WeblogScreenController extends ScreenController {
         }
     }
 
-    private tblLogs:Ref<HTMLTableSectionElement> = createRef();
+    
 
     sendRequestJournal(){
-        var b = new flatbuffers.Builder(256);
-        this.appManagement.WrapAndFinishAndSend(b,
-            Requests.RequestJournal,
-            RequestJournal.createRequestJournal(b),
-            [Responses.ResponseJournal]
-        );
-    }
-
-    onCreate(): void {
-        this.appManagement.registerWebsocketMessageTypes(this, Responses.ResponseJournal)
-        this.sendRequestJournal();
-    }
-
-    onFirstStart(): void {
-        
-    }
-    onRestart(): void {
-        
-    }
-    onPause(): void {
-        
+        let b = new flatbuffers.Builder(1024);
+        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestJournal, RequestJournal.createRequestJournal(b)));
+        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
     }
 
     public Template =()=> html`<div><input @click=${()=>this.sendRequestJournal()} type="button" value=" ⟳ Update" /></div>

@@ -5,11 +5,12 @@ import { ScreenController } from "./screen_controller";
 import * as flatbuffers from 'flatbuffers';
 
 import { UPLOAD_URL } from "../utils/constants";
-import { MyFavouriteDateTimeFormat, Severity } from "../utils/common";
+import { MyFavouriteDateTimeFormat } from "../utils/common";
 import { findChipModel, findChipFeatures, subtypeToString, otaStateToString } from "../utils/esp32";
 import { html } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { OkCancelDialog, OkDialog } from "../dialog_controller";
+import { Severity } from "@klaus-liebler/commons";
 
 
 

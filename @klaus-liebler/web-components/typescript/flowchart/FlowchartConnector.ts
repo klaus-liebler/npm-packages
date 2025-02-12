@@ -1,7 +1,8 @@
 import { FlowchartOperator } from "./FlowchartOperator";
 import { Flowchart } from "./Flowchart";
 import { FlowchartLink } from "./FlowchartLink";
-import {Location2D, Svg} from "../utils/common"
+import {Svg} from "../utils/common"
+import { Location2D } from "@klaus-liebler/commons";
 
 const TRANSLATEY = 20;
 

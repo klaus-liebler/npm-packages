@@ -2,7 +2,6 @@
 import path from "node:path";
 import fs from "node:fs";
 import { Context } from "./context";
-import { X02 } from "@klaus-liebler/commons";
 import { mac_12char } from "./utils";
 
 
@@ -12,7 +11,7 @@ export const SOUNDS_DE_SUBDIR = path.join("sounds","de")
 export const CURRENT_BOARD_SUBDIR = "current_board"
 export const FLASH_KEY_SUBDIR ="flash_encryption"
 export const FLASH_KEY_FILENAME= "key.bin"
-export const INFO_JSON_FILENAME = "info.json"
+export const BOARD_INFO_JSON_FILENAME = "board_info.json"
 export const NVS_PARTITION_BIN_FILENAME ="nvs_partition.bin"
 export const NVS_PARTITION_ENC_BIN_FILENAME ="nvs_partition-enc.bin"
 export const NVS_CSV_FILENAME ="nvs.csv"
@@ -34,13 +33,16 @@ export const CLIENT_CERT_PEM_PRVTKEY_FILE = "client.pem.key";
 export class Paths{
     constructor(private readonly c:Context){}
     //Current Project
-    get BUILD() {return path.join(this.c.c.idfProjectDirectory, "build");}
-    get SOUNDS() {return path.join(this.c.c.idfProjectDirectory, "sounds");}//Common sounds
-    get SOUNDS_DE() {return path.join(this.SOUNDS, "de");}//Common german voice sounds
-    get USERSETTINGS_PATH(){return path.join(this.c.c.idfProjectDirectory, "usersettings", "usersettings.ts");}
+    get P_BUILD() {return path.join(this.c.c.idfProjectDirectory, "build");}
+    get P_SOUNDS() {return path.join(this.c.c.idfProjectDirectory, "sounds");}//Project specific sound vald for all boards
+    get P_FLATBUFFERS() {return path.join(this.c.c.idfProjectDirectory, "flatbuffers");}//Project specific flatbuffer sources vald for all boards
+    get P_FLATBUFFERS_TEMPLATES() {return path.join(this.c.c.idfProjectDirectory, "flatbuffers_templates");}//Project specific flatbuffer templates
+    get P_WEB() {return path.join(this.c.c.idfProjectDirectory, "web");}
+    get P_SOUNDS_DE() {return path.join(this.P_SOUNDS, "de");}//Common german voice sounds
+    get P_USERSETTINGS_PATH(){return path.join(this.c.c.idfProjectDirectory, "usersettings", "usersettings.ts");}
 
     //im generated-Verzeichnis liegen alle Dateien, die bei jedem build neu generiert werden
-    get CURRENT_BOARD(){return path.join(this.c.c.generatedDirectory, CURRENT_BOARD_SUBDIR);}//Board Specific files copied from BOARDS for current board  
+    get GENERATED_CURRENT_BOARD(){return path.join(this.c.c.generatedDirectory, CURRENT_BOARD_SUBDIR);}//Board Specific files copied from BOARDS for current board  
     //es kann beim current_board kein Unterverzeichnis mit der individuellen Board-MAC-Adresse geben, weil dann der Pfad aller Dateien dynamisch wäre
     //Unterschied zu BOARDS:
     //- sie sind nicht immer gleich (Zertifikate, Schlüssel dürfen nicht immer neu generiert werden, sondern einmalig und bleiben dann gleich -->deshalb im BOARDS-Verzeichnis)
@@ -50,8 +52,7 @@ export class Paths{
     get GENERATED_NVS() {return path.join(this.c.c.generatedDirectory, "nvs");}
     get GENERATED_NVS_TS() {return path.join(this.c.c.generatedDirectory, "nvs_ts");}
     get GENERATED_FLATBUFFERS_CPP() {return path.join(this.c.c.generatedDirectory, "flatbuffers_cpp");}
-    
-    get GENERATED_SENSACT_TS() {return path.join(this.c.c.generatedDirectory, "sensact_ts");}
+    get GENERATED_FLATBUFFERS_TS() {return path.join(this.c.c.generatedDirectory, "flatbuffers_ts");}
     
     get GENERATED_WEB() {return path.join(this.c.c.generatedDirectory, "web");}
         

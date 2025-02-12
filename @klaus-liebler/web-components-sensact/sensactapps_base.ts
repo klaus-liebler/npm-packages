@@ -5,6 +5,9 @@ import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
 import  * as fb from "@generated/flatbuffers_ts/sensact";
 import { interfaces } from '@klaus-liebler/web-components';
 import { styleMap } from 'lit-html/directives/style-map.js';
+import * as cmd from "@generated/sensact_sendCommandImplementation/sendCommandImplementation"
+import { ISensactContext } from '@klaus-liebler/sensact-base/interfaces';
+import { uint8ArrayToBigInt } from '@klaus-liebler/commons';
 
 export enum SyncState {
   NODATA,
@@ -38,10 +41,10 @@ export class ApplicationGroup {
     }
     const divPanelStyle = { display: this.panelOpen ? 'block' : 'none'};
     return html`
-    <div class="appgroup">
-        <button ${ref(this.btnOpenClose)} @click=${(e) => this.onBtnOpenCloseClicked(e)} class="" style="display: flex; ">
+    <div class="accordion appgroup">
+        <button ${ref(this.btnOpenClose)} @click=${(e) => this.onBtnOpenCloseClicked(e)}>
             <span ${ref(this.spanArrowContainer)}>▶</span>
-            <span style="flex-grow: 1;">${this.DisplayName}</span>
+            <span style="flex-grow: 1; text-align:left; padding-left:10px;">${this.DisplayName}</span>
             <input ${ref(this.btnUpdate)} @click=${(e: MouseEvent) => this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
             <input ${ref(this.btnReset)} type="button" value=" 🗑 Reset Values" />
         </button>
@@ -106,7 +109,8 @@ export abstract class SensactApplication {
 
   public abstract UpdateState(state32bit:number);
 
-  constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx:interfaces.IAppManagement) { }
+  constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx:ISensactContext) { }
+  
 
   protected abstract CoreAppHtmlTemplate: () => TemplateResult<1>;
 
@@ -133,8 +137,7 @@ export abstract class SensactApplication {
 
 export class OnOffApplication extends SensactApplication {
   private inputElement: Ref<HTMLInputElement> = createRef()
-  constructor(applicationId: fb.ApplicationId, applicationDescription: string, ctx:interfaces.IAppManagement) { super(applicationId, applicationDescription, ctx) }
-
+  
   public UpdateState(state32bit:number){
     this.ConfirmSuccessfulWrite();
     this.inputElement.value!.checked=state32bit!=0;
@@ -142,24 +145,13 @@ export class OnOffApplication extends SensactApplication {
 
   private oninput() {
     if (this.inputElement.value!.checked) {
-      x.SendONCommand(this.applicationId, 0, this.ctx);
+      cmd.SendONCommand(this.applicationId, 0, this.ctx);
     } else {
-      x.SendOFFCommand(this.applicationId, 0, this.ctx);
+      cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
     }
     console.log(`onoff ${this.applicationId} ${this.inputElement.value!.checked}`);
   }
-/*
-  export async function sendCommandMessage(id: ApplicationId, cmd: Command, payload: bigint) {
-    console.log(`sendCommandMessage id=${id} cmd=${cmd}`)
-    let b = new flatbuffers.Builder(1024);
-    this.appManagement.WrapAndFinishAndSend(b,
-        Requests.websensact_RequestCommand,
-        RequestCommandMessage.createRequestCommandMessage(b, id, cmd, payload ),
-        [Responses.websensact_ResponseCommand]
-    );
-    //let buf = b.asUint8Array();
-}
-    */
+
   protected CoreAppHtmlTemplate = () => html`
        <input ${ref(this.inputElement)} @input=${() => this.oninput()} class="toggle" type="checkbox"></input>`
 
@@ -175,8 +167,7 @@ Wenn diese Zeiten dann individuell erreicht werden, wird der passende Befehl an 
 */
 export class BlindsTimerApplication extends SensactApplication {
   private inputElement: Ref<HTMLInputElement> = createRef()
-  constructor(applicationId: fb.ApplicationId, applicationDescription: string, ctx:interfaces.IAppManagement) { super(applicationId, applicationDescription, ctx) }
-
+  
   protected CoreAppHtmlTemplate = () => html`
        <input ${ref(this.inputElement)} @input=${() => this.oninput()} type="checkbox"></input>
   `
@@ -189,9 +180,9 @@ export class BlindsTimerApplication extends SensactApplication {
 
   private oninput() {
     if (this.inputElement.value!.checked) {
-      //x.SendONCommand(this.applicationId, 0);
+      cmd.SendONCommand(this.applicationId, 0, this.ctx);
     } else {
-      //x.SendOFFCommand(this.applicationId, 0);
+      cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
     }
     console.log(`blindstimer ${this.applicationId} ${this.inputElement.value!.checked}`);
 
@@ -206,8 +197,6 @@ export class BlindApplication extends SensactApplication {
   private stopElement: Ref<HTMLInputElement> = createRef()
   private downElement: Ref<HTMLInputElement> = createRef()
 
-  constructor(applicationId: fb.ApplicationId, applicationDescription: string, ctx:interfaces.IAppManagement,) { super(applicationId, applicationDescription, ctx) }
-
   public UpdateState(state32bit:number){
     this.ConfirmSuccessfulWrite();
     var pos = (state32bit & 0xFF);
@@ -215,23 +204,24 @@ export class BlindApplication extends SensactApplication {
   }
 
   onStop() {
-    //x.SendSTOPCommand(this.applicationId);
+    cmd.SendSTOPCommand(this.applicationId, this.ctx);
     console.log(`blind_stop ${this.applicationId}`);
   }
 
   onUp() {
-    console.log(`blind_up ${this.applicationId}`);
+    cmd.SendUPCommand(this.applicationId, 0, this.ctx);
+    console.log(`blind_stop ${this.applicationId}`);
   }
 
   onDown() {
-    //x.SendDOWNCommand(this.applicationId, 1);
+    cmd.SendDOWNCommand(this.applicationId, 0, this.ctx);
     console.log(`blind_down ${this.applicationId}`);
   }
 
   protected CoreAppHtmlTemplate = () => html`
-  <button ${ref(this.upElement)} @input=${() => this.onUp()}>▲</button>
-  <button ${ref(this.stopElement)} @input=${() => this.onStop()}>▮</button>
-  <button ${ref(this.downElement)} @input=${() => this.onDown()}>▼</button>
+  <button ${ref(this.upElement)} @click=${() => this.onUp()}>▲</button>
+  <button ${ref(this.stopElement)} @click=${() => this.onStop()}>▮</button>
+  <button ${ref(this.downElement)} @click=${() => this.onDown()}>▼</button>
   `
 }
 
@@ -239,7 +229,7 @@ export class BlindApplication extends SensactApplication {
 export class SinglePwmApplication extends SensactApplication {
   private onOffElement: Ref<HTMLInputElement> = createRef()
   private sliderElement: Ref<HTMLInputElement> = createRef()
-  constructor(applicationId: fb.ApplicationId, applicationDescription: string, ctx:interfaces.IAppManagement,) { super(applicationId, applicationDescription, ctx) }
+  
   private oninput() {
     if (this.onOffElement.value!.checked) {
       //x.SendONCommand(this.applicationId, 0);

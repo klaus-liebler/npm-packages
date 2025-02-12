@@ -1,70 +1,10 @@
+import { KeyValueTuple, Location2D, StringNumberTuple } from "@klaus-liebler/commons";
+
 export function EventCoordinatesInSVG(evt:MouseEvent, element:Element, positionRatio:number=1):Location2D {
     let rect = element.getBoundingClientRect();
     return {x: (evt.clientX - rect.left)/positionRatio, y:(evt.clientY - rect.top)/positionRatio}
 }
 
-export function uint8Array2HexString(d: Uint8Array) {
-    var s = "";
-    for (let index = 0; index < d.length; index++) {
-      var xx = d[index].toString(16);
-      if (xx.length == 1) s += "0" + xx;
-      else s += xx;
-    }
-    return s;
-  }
-  
-  export function numberArray2HexString(d: Array<number>) {
-    var s = "";
-    for (let index = 0; index < d.length; index++) {
-      var xx = d[index].toString(16);
-      if (xx.length == 1) s += "0" + xx;
-      else s += xx;
-    }
-    return s;
-  }
-
-export interface Location2D {
-    x: number;
-    y: number;
-}
-
-export interface KeyValueTuple {
-    key: string;
-    value: any;
-}
-
-export class StringNumberTuple{
-    public constructor(public s:string, public n:number){}
-}
-
-export enum Severity {
-    SUCCESS,
-    INFO,
-    WARN,
-    ERROR,
-  }
-  
-  export function severity2symbol(severity: Severity): string {
-    switch (severity) {
-        case Severity.WARN:
-        case Severity.ERROR: return "⚠";
-        case Severity.INFO: return "🛈";
-        case Severity.SUCCESS: return "👍";
-    }
-  }
-  
-  export function severity2class(severity: Severity): string {
-    switch (severity) {
-        case Severity.WARN: return "warn"
-        case Severity.ERROR: return "error";
-        case Severity.INFO: return "info";
-        case Severity.SUCCESS: return "success";
-    }
-  }
-
-  export function EscapeToVariableName(n: string) {
-    return n.toLocaleUpperCase().replace(" ", "_");
-  }
 
   export const SVGNS = "http://www.w3.org/2000/svg";
   export const XLINKNS = "http://www.w3.org/1999/xlink";
@@ -79,10 +19,7 @@ export enum Severity {
     second: "2-digit",
   }
   
-  export function ip4_2_string(ip: number | undefined): string {
-    if (!ip) return "undefined";
-    return `${(ip >> 0) & 0xFF}.${(ip >> 8) & 0xFF}.${(ip >> 16) & 0xFF}.${(ip >> 24) & 0xFF}`;
-  }
+
     
 
   export function Svg(parent: Element, type:string,  attributes:string[], classes?: string[]):SVGElement {

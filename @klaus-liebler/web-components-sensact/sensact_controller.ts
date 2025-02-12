@@ -7,7 +7,7 @@ import * as flatbuffers from 'flatbuffers';
 import bed from '@klaus-liebler/svgs/solid/bed.svg?raw'
 import lightbulb from '@klaus-liebler/svgs/solid/lightbulb.svg?raw'
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
-import { GetLevelFromApplicationId, GetRoomFromApplicationId, GetTechnologyFromApplicationId } from "./sensact";
+import { GetLevelFromApplicationId, GetRoomFromApplicationId, GetTechnologyFromApplicationId } from "@klaus-liebler/sensact-base/application_id_utils";
 
 import { ApplicationId, Command, Namespace, NotifyStatus, Requests, ResponseCommand, Responses, ResponseStatus, ResponseWrapper, RequestWrapper, RequestCommand } from "@generated/flatbuffers_ts/sensact";
 import { ISensactContext } from "@klaus-liebler/sensact-base/interfaces";
@@ -29,7 +29,6 @@ export class SensactController extends ScreenController implements ISensactConte
         )
         this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
     }
-
 
     private groups: Array<ApplicationGroup>;
 
@@ -140,7 +139,7 @@ export class SensactController extends ScreenController implements ISensactConte
     }
 
     private onStart_or_onRestart() {
-        this.btnSortRooms();
+        this.btnSortTechnology();
     }
 
     OnFirstStart(): void {

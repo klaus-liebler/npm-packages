@@ -1,8 +1,9 @@
 import {FlowchartInputConnector, FlowchartOutputConnector } from "./FlowchartConnector";
 import {Flowchart} from "./Flowchart";
 import { SerializeContextAndAdressMap } from "./FlowchartCompiler";
-import {KeyValueTuple, Svg} from "../utils/common"
+import {Svg} from "../utils/common"
 import { SimulationContext } from "./SimulationContext";
+import { KeyValueTuple } from "@klaus-liebler/commons";
 
 export enum PositionType{
     Default,

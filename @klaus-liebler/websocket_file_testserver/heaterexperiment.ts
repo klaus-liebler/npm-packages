@@ -1,6 +1,6 @@
 import * as flatbuffers from "flatbuffers"
-import { heaterexperiment } from "@klaus-liebler/flatbuffer-object-definitions"
-import { ISender, NamespaceAndHandler } from "..";
+import * as heaterexperiment from "@generated/flatbuffers_ts/heaterexperiment"
+import { ISender, NamespaceAndHandler } from "./utils";
 import { randomInt } from "crypto";
 
 export class HeaterExperimentHandler extends NamespaceAndHandler {

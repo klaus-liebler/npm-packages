@@ -24,6 +24,6 @@ export async function buildAndCompressWebProject(projectRoot:string, outDir:stri
   const compressedPath = path.join(outDir, "index.compressed.br")
   const result = zlib.brotliCompressSync(fs.readFileSync(origPath));
   fs.writeFileSync(compressedPath, result);
-  console.log(`Compressed file written to ${compressedPath}. FileSize = ${result.byteLength} byte = ${(result.byteLength / 1024.0).toFixed(2)} kiB`);
+  console.log(`Web application file written to ${compressedPath}. Brotli compressed file size = ${result.byteLength} byte = ${(result.byteLength / 1024.0).toFixed(2)} kiB`);
   return;
 }

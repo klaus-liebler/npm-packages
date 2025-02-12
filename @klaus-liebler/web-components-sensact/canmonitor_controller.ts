@@ -3,19 +3,12 @@ import { NotifyCanMessage, Namespace} from "@generated/flatbuffers_ts/canmonitor
 import {common} from "@klaus-liebler/web-components";
 import { ScreenController } from "@klaus-liebler/web-components";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { cCANMessageBuilderParserOld } from "./sensact.ts";
+
 import { ByteBuffer } from "flatbuffers";
 import { IAppManagement } from "@klaus-liebler/web-components/typescript/utils/interfaces.ts";
+import { canMessage2HexString, cCANMessageBuilderParserOld } from "@klaus-liebler/sensact-base/can_message_utils";
 
-function uint8Array2HexString(d: NotifyCanMessage) {
-	var s = "";
-	for (let index = 0; index < d.dataLen(); index++) {
-		var xx = d.data()!.data(index)!.toString(16);
-		if (xx.length == 1) s += "0" + xx;
-		else s += xx;
-	}
-	return s;
-}
+
 
 export class CanMonitorScreenController extends ScreenController {
 
@@ -41,7 +34,7 @@ export class CanMonitorScreenController extends ScreenController {
 		var row = t.insertRow(0);
 		row.insertCell().textContent = new Date().toLocaleString("de-DE", common.MyFavouriteDateTimeFormat);
 		row.insertCell().textContent = d.messageId().toString(16);
-		row.insertCell().textContent = uint8Array2HexString(d);
+		row.insertCell().textContent = canMessage2HexString(d);
 		row.insertCell().textContent = d.dataLen.toString();
 		row.insertCell().textContent = d.dataLen.toString();
 	}

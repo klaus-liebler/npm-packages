@@ -9,7 +9,7 @@ import rotate from '../../svgs/solid/rotate.svg?raw';
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import { IAppManagement } from "../utils/interfaces";
 import { DialogController, FilenameDialog } from "../dialog_controller";
-import { numberArray2HexString } from "../utils/common";
+import { numberArray2HexString } from "@klaus-liebler/commons";
 
 const weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const startHour=6;

@@ -2,7 +2,6 @@ import * as fs from "node:fs"
 import path from "node:path"
 import * as flatbuffers from "flatbuffers"
 
-import * as weso from "ws"
 import { randomInt } from "node:crypto";
 
 const FBDSTORE_BASE_DIRECTORY = "fbdstore";
@@ -10,8 +9,8 @@ const DEFAULT_FBD_FILEPATH = "default.fbd";
 const TEMP_FBD_FILEPATH = "temp.fbd";
 
 
-import { functionblock } from "@klaus-liebler/flatbuffer-object-definitions"
-import { ISender, NamespaceAndHandler } from "..";
+import * as functionblock from "@generated/flatbuffers_ts/functionblock"
+import { ISender, NamespaceAndHandler } from "./utils";
 
 export class FunctionblockHandler extends NamespaceAndHandler {
     constructor(private readonly spiffsRoot:string) {

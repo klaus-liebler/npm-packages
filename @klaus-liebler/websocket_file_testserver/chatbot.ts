@@ -1,5 +1,5 @@
 import * as flatbuffers from "flatbuffers"
-import { chatbot} from "@klaus-liebler/flatbuffer-object-definitions"
+import * as chatbot from "@generated/flatbuffers_ts/chatbot"
 import { ISender, NamespaceAndHandler } from "..";
 
 export class ChatbotHandler extends NamespaceAndHandler {

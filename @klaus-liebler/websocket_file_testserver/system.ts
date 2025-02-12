@@ -1,6 +1,6 @@
 import * as flatbuffers from "flatbuffers"
-import { system } from "@klaus-liebler/flatbuffer-object-definitions"
-import { ISender, NamespaceAndHandler } from "..";
+import * as system from "@generated/flatbuffers_ts/systeminfo"
+import { ISender, NamespaceAndHandler } from "./utils";
 export class SystemHandler extends NamespaceAndHandler {
     constructor() {
         super(system.Namespace.Value)
