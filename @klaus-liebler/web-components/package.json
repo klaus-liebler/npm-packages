@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
+    "@generated/runtimeconfig_ts": "file:../../../generated/runtimeconfig_ts",
     "@google/generative-ai": "^0.21.0",
     "@klaus-liebler/commons": "file:../commons",
     "@klaus-liebler/usersettings_runtime": "file:../usersettings_runtime",

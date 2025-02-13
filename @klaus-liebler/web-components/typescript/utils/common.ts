@@ -10,18 +10,6 @@ export function EventCoordinatesInSVG(evt:MouseEvent, element:Element, positionR
   export const XLINKNS = "http://www.w3.org/1999/xlink";
   export const HTMLNS = "http://www.w3.org/1999/xhtml";
 
-  export const MyFavouriteDateTimeFormat: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }
-  
-
-    
-
   export function Svg(parent: Element, type:string,  attributes:string[], classes?: string[]):SVGElement {
         return  parent.appendChild(<SVGElement>Elem(SVGNS, type, attributes, classes));
     }

@@ -53,6 +53,8 @@ export class Paths{
     get GENERATED_NVS_TS() {return path.join(this.c.c.generatedDirectory, "nvs_ts");}
     get GENERATED_FLATBUFFERS_CPP() {return path.join(this.c.c.generatedDirectory, "flatbuffers_cpp");}
     get GENERATED_FLATBUFFERS_TS() {return path.join(this.c.c.generatedDirectory, "flatbuffers_ts");}
+    get GENERATED_RUNTIMECONFIG_TS() {return path.join(this.c.c.generatedDirectory, "runtimeconfig_ts");}
+    get GENERATED_RUNTIMECONFIG_CPP() {return path.join(this.c.c.generatedDirectory, "runtimeconfig_cpp");}
     
     get GENERATED_WEB() {return path.join(this.c.c.generatedDirectory, "web");}
         

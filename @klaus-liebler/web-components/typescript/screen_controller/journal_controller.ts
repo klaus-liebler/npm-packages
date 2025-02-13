@@ -1,10 +1,11 @@
 import { html } from "lit-html";
 import { ResponseWrapper, ResponseJournal, RequestJournal, RequestWrapper, Requests, Responses, Namespace } from "@generated/flatbuffers_ts/journal";
-import { MyFavouriteDateTimeFormat } from "../utils/common";
+
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from "flatbuffers"
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { zzfx } from "../zzfx"; 
+import { MyFavouriteDateTimeFormat } from "@klaus-liebler/commons";
 
 export class JournalController extends ScreenController {
 
@@ -39,7 +40,7 @@ export class JournalController extends ScreenController {
             var row = this.tblLogs.value!.insertRow();
             let secondsEpoch = item.lastMessageTimestamp()!;
             if (secondsEpoch > 1684412222){//this magic second is when I first wrote this code
-                row.insertCell().textContent = new Date(1000*Number(secondsEpoch)).toLocaleString("de-DE", MyFavouriteDateTimeFormat);;
+                row.insertCell().textContent = new Date(1000*Number(secondsEpoch)).toLocaleString("de-DE", MyFavouriteDateTimeFormat);
             }else{
                 row.insertCell().textContent=secondsEpoch.toString();
             }

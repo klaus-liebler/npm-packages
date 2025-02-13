@@ -1,15 +1,16 @@
 import { ScreenController } from "@klaus-liebler/web-components";
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { ApplicationGroup, SensactApplication } from "./sensactapps_base";
+import { ApplicationGroup, SensactApplication, SensactApplicationAndLocalFlag } from "./sensactapps_base";
 import * as flatbuffers from 'flatbuffers';
 
 import bed from '@klaus-liebler/svgs/solid/bed.svg?raw'
 import lightbulb from '@klaus-liebler/svgs/solid/lightbulb.svg?raw'
+import arrows_to_circle from '@klaus-liebler/svgs/solid/arrows-to-circle.svg?raw'
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import { GetLevelFromApplicationId, GetRoomFromApplicationId, GetTechnologyFromApplicationId } from "@klaus-liebler/sensact-base/application_id_utils";
 
-import { ApplicationId, Command, Namespace, NotifyStatus, Requests, ResponseCommand, Responses, ResponseStatus, ResponseWrapper, RequestWrapper, RequestCommand } from "@generated/flatbuffers_ts/sensact";
+import { ApplicationId, Command, Namespace, NotifyStatus, Requests, ResponseCommand, Responses, ResponseStatus, ResponseWrapper, RequestWrapper, RequestCommand, Payload } from "@generated/flatbuffers_ts/sensact";
 import { ISensactContext } from "@klaus-liebler/sensact-base/interfaces";
 import { IAppManagement } from "@klaus-liebler/web-components/typescript/utils/interfaces";
 import  "@klaus-liebler/commons"
@@ -17,27 +18,39 @@ import  "@klaus-liebler/commons"
 
 export class SensactController extends ScreenController implements ISensactContext {
     
-    public SendCommandMessage(id: ApplicationId, cmd: Command, payload: Uint8Array) {
-        let view = new DataView(payload.buffer, 0);
+    public SendCommandMessage(id: ApplicationId, cmd: Command, payload: DataView) {
         let b = new flatbuffers.Builder(1024);
+        var payload_as_numbers_array=new Array<number>();
+        for(var i=0;i<payload.byteLength;i++){
+            payload_as_numbers_array.push(payload.getUint8(i))
+        }
+        const dataOffset = Payload.createPayload(b, payload_as_numbers_array, payload.byteLength);
+        RequestCommand.startRequestCommand(b)
+        RequestCommand.addId(b, id);
+        RequestCommand.addCmd(b, cmd);
+        RequestCommand.addPayload(b, dataOffset);
+        const offset = RequestCommand.endRequestCommand(b);
+
         b.finish(
             RequestWrapper.createRequestWrapper(
                 b,
                 Requests.RequestCommand,
-                RequestCommand.createRequestCommand(b, id, cmd, view.getBigUint64(0, true))
+                offset
             )
         )
         this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
     }
 
     private groups: Array<ApplicationGroup>;
+    private filterLocal:boolean;
 
     private btnSortTechnology() {
         var tech2apps = new Map<string, Array<SensactApplication>>();
-        for (const app of this.sensactApps.values()) {
-            var k = GetTechnologyFromApplicationId(app.applicationId);
+        for (const appc of this.id2appContainer.values()) {
+            if(this.filterLocal && !appc.local) continue;
+            var k = GetTechnologyFromApplicationId(appc.app.applicationId);
             var arr = tech2apps.getOrAdd(k, () => new Array<SensactApplication>());
-            arr.push(app);
+            arr.push(appc.app);
         }
         var sortedMap = new Map([...tech2apps.entries()].sort((a, b) => a[0].localeCompare(b[0])));
         this.groups = [];
@@ -47,12 +60,21 @@ export class SensactController extends ScreenController implements ISensactConte
         this.execTemplates();
     }
 
+    private btnOnlyLocalApps(e:MouseEvent){
+        const b = e.currentTarget as HTMLButtonElement;
+        b.classList.toggle('active');
+        this.filterLocal=b.classList.contains("active");
+        console.log(`Only Local Apps is ${this.filterLocal}`)
+        this.btnSortTechnology()
+    }
+
     private btnSortRooms() {
         var level_room2apps = new Map<string, Array<SensactApplication>>();
-        for (const app of this.sensactApps.values()) {
-            var room_level = GetRoomFromApplicationId(app.applicationId) + "_" + GetLevelFromApplicationId(app.applicationId);
+        for (const appc of this.id2appContainer.values()) {
+            if(this.filterLocal && !appc.local) continue;
+            var room_level = GetRoomFromApplicationId(appc.app.applicationId) + "_" + GetLevelFromApplicationId(appc.app.applicationId);
             var arr = level_room2apps.getOrAdd(room_level, () => new Array<SensactApplication>());
-            arr.push(app);
+            arr.push(appc.app);
         }
         var sortedMap = new Map([...level_room2apps.entries()].sort((a, b) => a[0].localeCompare(b[0])));
         this.groups = [];
@@ -77,10 +99,11 @@ export class SensactController extends ScreenController implements ISensactConte
     <div class="buttons">
         <button class="withsvg" @click=${() => this.btnSortRooms()}>${unsafeSVG(bed)}<span>Sort Rooms<span></button>
         <button class="withsvg" @click=${() => this.btnSortTechnology()}>${unsafeSVG(lightbulb)}<span>Sort Tech<span></button>
+        <button class="withsvg toggle-button" @click=${(e:MouseEvent) => this.btnOnlyLocalApps(e)}>${unsafeSVG(arrows_to_circle)}<span>Only Local Apps<span></button>
     </div>
     <section ${ref(this.mainElement)}></section>`;
 
-    private sensactApps: Map<number, SensactApplication>;
+    private id2appContainer: Map<number, SensactApplicationAndLocalFlag>;
 
     OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
         if (namespace != Namespace.Value) return;
@@ -106,36 +129,38 @@ export class SensactController extends ScreenController implements ISensactConte
     }
 
     private onNotifyStatus(m: NotifyStatus) {
-        var app = this.sensactApps.get(m.id());
-        if (!app) {
+        var appc = this.id2appContainer.get(m.id());
+        if (!appc) {
             console.warn(`Unknown app with id ${m.id()}`);
             return;
         }
-        app.UpdateState(m.status());
+        const arr = new Uint16Array([m.status().data(0),m.status().data(1),m.status().data(2),m.status().data(3), ])
+        appc.app.UpdateState(arr);
     }
 
     private onResponseStatus(m: ResponseStatus) {
         for (var i = 0; i < m.statesLength(); i++) {
-            var app = this.sensactApps.get(m.states(i)!.id());
-            if (!app) {
+            var appc = this.id2appContainer.get(m.states(i)!.id());
+            if (!appc) {
                 console.warn(`Unknown app with id ${m.states(i)!.id()}`);
                 continue;
             }
-            app.UpdateState(m.states(i)!.status());
+            const arr = new Uint16Array([m.states(i).status().data(0),m.states(i).status().data(1),m.states(i).status().data(2),m.states(i).status().data(3), ])
+            appc.app.UpdateState(arr);
         }
     }
 
     public constructor(appManagement: IAppManagement){
         super(appManagement)
     }
-    private apps:Array<SensactApplication>
-    public AddApps(apps:Array<SensactApplication>){
+    private apps:Array<SensactApplicationAndLocalFlag>
+    public AddApps(apps:Array<SensactApplicationAndLocalFlag>){
         this.apps=apps;
     }
    
     OnCreate(): void {
         this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
-        this.sensactApps = new Map<number, SensactApplication>(this.apps.map(v => [v.applicationId, v]));
+        this.id2appContainer = new Map<number, SensactApplicationAndLocalFlag>(this.apps.map(v => [v.app.applicationId, v]));
     }
 
     private onStart_or_onRestart() {

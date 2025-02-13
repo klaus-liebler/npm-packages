@@ -7,7 +7,6 @@ import { interfaces } from '@klaus-liebler/web-components';
 import { styleMap } from 'lit-html/directives/style-map.js';
 import * as cmd from "@generated/sensact_sendCommandImplementation/sendCommandImplementation"
 import { ISensactContext } from '@klaus-liebler/sensact-base/interfaces';
-import { uint8ArrayToBigInt } from '@klaus-liebler/commons';
 
 export enum SyncState {
   NODATA,
@@ -18,6 +17,11 @@ export enum SyncState {
 export interface SensactContext {
 
 };
+
+export interface SensactApplicationAndLocalFlag{
+  local:boolean;
+  app:SensactApplication;
+}
 
 export class ApplicationGroup {
   constructor(public readonly DisplayName: string, private readonly appManagement: interfaces.IAppManagement, public readonly Apps: Array<SensactApplication>, private readonly key: string | null = null) { }
@@ -107,7 +111,7 @@ export abstract class SensactApplication {
 
   protected syncState: SyncState = SyncState.NODATA;
 
-  public abstract UpdateState(state32bit:number);
+  public abstract UpdateState(state:Uint16Array);
 
   constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx:ISensactContext) { }
   
@@ -129,18 +133,14 @@ export abstract class SensactApplication {
   protected ConfirmSuccessfulWrite() {
     this.syncState=SyncState.SYNCHRONIZED;
   }
-
-  
-
- 
 }
 
 export class OnOffApplication extends SensactApplication {
   private inputElement: Ref<HTMLInputElement> = createRef()
   
-  public UpdateState(state32bit:number){
+  public UpdateState(state:Uint16Array){
     this.ConfirmSuccessfulWrite();
-    this.inputElement.value!.checked=state32bit!=0;
+    this.inputElement.value!.checked=state[0]!=0;
   }
 
   private oninput() {
@@ -172,11 +172,10 @@ export class BlindsTimerApplication extends SensactApplication {
        <input ${ref(this.inputElement)} @input=${() => this.oninput()} type="checkbox"></input>
   `
 
-  public UpdateState(state32bit:number){
+  public UpdateState(state:Uint16Array){
     this.ConfirmSuccessfulWrite();
-    this.inputElement.value!.checked=state32bit!=0;
+    this.inputElement.value!.checked=state[0]!=0;
   }
-
 
   private oninput() {
     if (this.inputElement.value!.checked) {
@@ -187,8 +186,6 @@ export class BlindsTimerApplication extends SensactApplication {
     console.log(`blindstimer ${this.applicationId} ${this.inputElement.value!.checked}`);
 
   }
-
-
 }
 
 export class BlindApplication extends SensactApplication {
@@ -197,10 +194,10 @@ export class BlindApplication extends SensactApplication {
   private stopElement: Ref<HTMLInputElement> = createRef()
   private downElement: Ref<HTMLInputElement> = createRef()
 
-  public UpdateState(state32bit:number){
+  public UpdateState(state:Uint16Array){
     this.ConfirmSuccessfulWrite();
-    var pos = (state32bit & 0xFF);
-    var dir = (state32bit & 0xFF00)>>8;
+    //var pos = (state32bit & 0xFF);
+    //var dir = (state32bit & 0xFF00)>>8;
   }
 
   onStop() {
@@ -232,24 +229,23 @@ export class SinglePwmApplication extends SensactApplication {
   
   private oninput() {
     if (this.onOffElement.value!.checked) {
-      //x.SendONCommand(this.applicationId, 0);
+      cmd.SendONCommand(this.applicationId, 0, this.ctx);
     } else {
-      //x.SendOFFCommand(this.applicationId, 0);
+      cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
     }
     console.log(`SinglePwmApplication ${this.applicationId} ${this.onOffElement.value!.checked}`);
   }
 
-  public UpdateState(state32bit:number){
+  public UpdateState(state:Uint16Array){
     this.ConfirmSuccessfulWrite();
-    var brightness:number = (state32bit & 0xFF);
-    var on:boolean = (state32bit & 0xFF00)!=0;
-    if(brightness!=this.sliderElement.value!.valueAsNumber){
-      this.sliderElement.value!.valueAsNumber=brightness;
+    var targetLevel:number = state[3];
+    if(targetLevel!=this.sliderElement.value!.valueAsNumber){
+      this.sliderElement.value!.valueAsNumber=targetLevel;
     }
   }
 
   private onslide() {
-    //x.SendSET_VERTICAL_TARGETCommand(this.applicationId, parseInt(slider.value));
+    cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber, this.ctx);
     console.log(`singlepwm_slider ${this.applicationId} ${this.sliderElement.value!.valueAsNumber}`);
   }
   protected CoreAppHtmlTemplate = () => html`
