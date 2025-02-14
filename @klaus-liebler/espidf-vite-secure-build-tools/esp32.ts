@@ -379,18 +379,30 @@ export async function FindProbablePort():Promise<IPortInfo|null> {
     return null;
 }
 
+class VendorProduct{
+    public constructor(public readonly vendorId:string, public readonly productId:string){}
+}
+const validUsb=[
+    new VendorProduct("303A", "1001"),
+    new VendorProduct("1A86", "55D3"),
+]
 export async function GetESP32Object(): Promise<ESP32Type|null> {
     const portInfo = await autoDetect().list() as Array<IPortInfo>;
     let ret:ESP32Type|null;
     for (var pi of portInfo) {
-        if(pi.productId!="1001" || pi.vendorId!="303A"){
+        if(!validUsb.find(v=>{
+            const result=v.productId==pi.productId && v.vendorId==pi.vendorId
+            return result;
+        })){
             continue;
         }
-        console.log(`Checking Port '${pi.friendlyName}'`);
+        
+        console.log(`Checking Port '${pi.friendlyName}' (vid:${pi.vendorId}, pid:${pi.productId})`);
         ret=await GetESP32ObjectFromSpecificPort(pi.path)
         if(ret){
             return ret;
         }
     }
+    console.warn(`Non of the following USB ports are supposed to be a ESP32 programmer:\n ${JSON.stringify(portInfo)}`)
     return null;
 }
