@@ -22,8 +22,8 @@ function createRootCaExtensions() {
 
 
 
-function createUniversalAuthExtensions(dnsHostname: string, authorityKeyIdentifier: string) {
-	return [
+function createUniversalAuthExtensions(dnsHostnames: Array<string>, authorityKeyIdentifier: string) {
+	var x= [
 		{
 			name: 'authorityKeyIdentifier',
 			authorityCertIssuer: true,
@@ -42,16 +42,6 @@ function createUniversalAuthExtensions(dnsHostname: string, authorityKeyIdentifi
 			serverAuth: true,
 			clientAuth: true,
 		},{
-			name: 'subjectAltName',
-			altNames: [{
-					type: 2, // 2 is DNS type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
-					value: dnsHostname
-				},{
-					type: 7,  // 7 is IP type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
-					ip: "192.168.4.1" //this is the address when the board is in AP mode, see https://github.com/digitalbazaar/forge/issues/714
-				}
-			]
-		},{
 			name: 'subjectKeyIdentifier'
 		},{
 			name: 'customExtension',
@@ -59,6 +49,23 @@ function createUniversalAuthExtensions(dnsHostname: string, authorityKeyIdentifi
 			value: forge.util.encodeUtf8('false')
 		  }
 	];
+	var altNames:any={
+		name: 'subjectAltName',
+		altNames: [{
+				type: 7,  // 7 is IP type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
+				ip: "192.168.4.1" //this is the address when the board is in AP mode, see https://github.com/digitalbazaar/forge/issues/714
+			}
+		]
+	};
+	dnsHostnames.forEach(h=>altNames.altNames.push(
+		{
+			type: 2, // 2 is DNS type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
+			value: h
+		}
+	));
+
+	x.push(altNames);
+	return x;
 }
 
 
@@ -129,7 +136,7 @@ export function CreateAndSignCertWithGivenPublicKey(publicKeyPemPath: fs.PathOrF
 	cert.validity.notAfter = DateNDaysInFuture(3000);//8 Years
 	cert.setSubject(createSubject(commonName));
 	cert.setIssuer(caCert.subject.attributes); //issuer is the subject of the rootCA);
-	cert.setExtensions(createUniversalAuthExtensions(dnsHostname, caCert.serialNumber));
+	cert.setExtensions(createUniversalAuthExtensions([dnsHostname], caCert.serialNumber));
 	cert.sign(caPrivateKey, forge.md.sha256.create());
 	return forge.pki.certificateToPem(cert);
 }
@@ -144,14 +151,14 @@ export function CreateRootCA(commonName: string) {
 		null);//self sign
 }
 
-export function CreateAndSignCert(commonName:string, dnsHostname: string, certificateCaPemPath: fs.PathOrFileDescriptor, privateKeyCaPemPath: fs.PathOrFileDescriptor) {
+export function CreateAndSignCert(commonName:string, dnsHostnames: Array<string>, certificateCaPemPath: fs.PathOrFileDescriptor, privateKeyCaPemPath: fs.PathOrFileDescriptor) {
 	let caCert = forge.pki.certificateFromPem(fs.readFileSync(certificateCaPemPath).toString());
 	let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync(privateKeyCaPemPath).toString());
 	return certHelper(
 		false,
 		createSubject(commonName),
 		caCert.subject.attributes, //issuer is the subject of the rootCA
-		createUniversalAuthExtensions(dnsHostname, caCert.serialNumber),
+		createUniversalAuthExtensions(dnsHostnames, caCert.serialNumber),
 		caPrivateKey //sign with private key of rootCA
 	);
 }
@@ -163,7 +170,7 @@ export function CreateAndSignClientCert(username: string, certificateCaPemPath: 
 		false,
 		createSubject(username),
 		caCert.subject.attributes, //issuer is the subject of the rootCA
-		createUniversalAuthExtensions(username, caCert.serialNumber),
+		createUniversalAuthExtensions([username], caCert.serialNumber),
 		caPrivateKey //sign with private key of rootCA
 	);
 }
