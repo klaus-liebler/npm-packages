@@ -1,9 +1,7 @@
-
 import path from "node:path";
 import fs from "node:fs";
 import { Context } from "./context";
 import { mac_12char } from "./utils";
-
 
 
 //Dies hier sind ausschließlich relative Pfade bezogen auf die in gulpfile_config.ts definierten Pfade
@@ -49,15 +47,14 @@ export class Paths{
     //- Sie werden auch nicht von einem externen Dienst (z.b. Google TTS) geholt
     
     get GENERATED_BOARD_SPECIFIC_CPP() {return path.join(this.c.c.generatedDirectory, "board_specific_cpp");}
-    get GENERATED_NVS() {return path.join(this.c.c.generatedDirectory, "nvs");}
-    get GENERATED_NVS_TS() {return path.join(this.c.c.generatedDirectory, "nvs_ts");}
+    get GENERATED_USERSETTINGS() {return path.join(this.c.c.generatedDirectory, "usersettings");}
+    get GENERATED_USERSETTINGS_TS() {return path.join(this.c.c.generatedDirectory, "usersettings_ts");}
     get GENERATED_FLATBUFFERS_CPP() {return path.join(this.c.c.generatedDirectory, "flatbuffers_cpp");}
     get GENERATED_FLATBUFFERS_TS() {return path.join(this.c.c.generatedDirectory, "flatbuffers_ts");}
     get GENERATED_RUNTIMECONFIG_TS() {return path.join(this.c.c.generatedDirectory, "runtimeconfig_ts");}
     get GENERATED_RUNTIMECONFIG_CPP() {return path.join(this.c.c.generatedDirectory, "runtimeconfig_cpp");}
-    
+    get GENERATED_CMAKE() {return path.join(this.c.c.generatedDirectory, "cmake");}
     get GENERATED_WEB() {return path.join(this.c.c.generatedDirectory, "web");}
-        
     get GENERATED_FLATBUFFERS_FBS() {return path.join(this.c.c.generatedDirectory, "flatbuffers_fbs");}
 
     public boardSpecificPath(subdir?:string, filename?:string){
@@ -73,12 +70,9 @@ export class Paths{
         return path.join(BOARDS, mac+"_"+mac_12char(mac), subdir, filename);
     }
 
-    
     public existsBoardSpecificPath(subdir:string, filename?:string){
       return fs.existsSync(this.boardSpecificPath(subdir, filename));
     }
-    
-    
     
     public createBoardSpecificPathLazy(subdir:string) {
       var directory= this.boardSpecificPath(subdir);

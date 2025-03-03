@@ -1,6 +1,7 @@
 import path from "node:path";
-import fs from "node:fs";
+import fs, { PathLike } from "node:fs";
 import {SearchReplace, X02 } from "@klaus-liebler/commons";
+
 
 export function mac_12char(mac:number){return X02(mac, 12);}
 export function mac_6char(mac:number){return mac_12char(mac).slice(6);}
@@ -10,6 +11,7 @@ export interface IBoardInfo{
   //alle folgenden können nicht aus Board ausgelesen werden
   board_name:string,
   board_version:number,
+  board_roles:string|Array<string>,
   first_connected_dt:number,
   last_connected_dt:number,
   board_settings:any,
@@ -23,6 +25,21 @@ export function writeFileCreateDirLazy(file: fs.PathOrFileDescriptor, data: stri
   } else {
     fs.writeFileSync(file, data);
   }
+}
+
+export function cleanNpmExcept_PackageJson_node_modules(targetDir:string){
+  const dirItems=fs.readdirSync(targetDir);
+  for(const item of dirItems){
+    const fullPath = path.join(targetDir, item);
+    const stats=fs.statSync(fullPath)
+    if(stats.isDirectory()){
+      if(fullPath.indexOf("node_modules")>=0) continue
+      fs.rmSync(fullPath, {recursive:true, force:true})
+    }else if(stats.isFile()){
+      if(fullPath.endsWith("json")) continue
+      fs.unlinkSync(fullPath);
+    }
+  };
 }
 
 export function CopyBoardSpecificFiles(targetDir:string, pathsWithDynamicFiles:Array<string>, namesToSearchFor:Array<string>) {

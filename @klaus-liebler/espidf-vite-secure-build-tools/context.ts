@@ -1,23 +1,30 @@
-import { IBoardInfo} from "./utils";
+import { IBoardInfo } from "./utils";
 import * as esp from "./esp32"
 import * as idf from "./espidf"
 import * as P from "./paths";
 import fs from "node:fs";
 import path from "node:path";
-export class ContextConfig {
 
-  constructor(public readonly generatedDirectory:string, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
+export class ContextConfig {
+  constructor(public readonly generatedDirectory: string, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
 }
+
 export class Context {
 
-  public setFlashEncryptionKeyBurnedAndActivated(){
-    this.b.flash_encryption_key_burned_and_activated=true;
-    const boardInfoJsonPath = P.Paths.boardSpecificPath(this.c.boardsDirectory, this.b.mac, P.INFO_JSON_FILENAME);
+  public setFlashEncryptionKeyBurnedAndActivated() {
+    this.b.flash_encryption_key_burned_and_activated = true;
+    const boardInfoJsonPath = P.Paths.boardSpecificPath(this.c.boardsDirectory, this.b.mac, P.BOARD_INFO_JSON_FILENAME);
     fs.writeFileSync(boardInfoJsonPath, JSON.stringify(this.b))
   }
 
-  private constructor(public c: ContextConfig, public b: IBoardInfo, public i: idf.IIdfProjectInfo | null, public f: idf.IFlasherConfiguration | null) { }
+  public p:P.Paths;
+
+  private constructor(public c: ContextConfig, public b: IBoardInfo, public i: idf.IIdfProjectInfo | null, public f: idf.IFlasherConfiguration | null) {
+    this.p=new P.Paths(this);
+  }
+  
   private static instance: Context | null;
+  
   public static async get(config: ContextConfig, updateWithCurrentlyConnectedBoard: boolean = false): Promise<Context> {
     var mac: number = 0;
     const currentBoardInfoJsonPath = path.join(config.idfProjectDirectory, P.BOARD_INFO_JSON_FILENAME)
@@ -72,7 +79,7 @@ export class Context {
         first_connected_dt: Date.now(),
         last_connected_dt: Date.now(),
         mac: mac,
-        flash_encryption_key_burned_and_activated:false,
+        flash_encryption_key_burned_and_activated: false,
       }
       fs.writeFileSync(boardInfoJsonPath, JSON.stringify(boardInfo))
 

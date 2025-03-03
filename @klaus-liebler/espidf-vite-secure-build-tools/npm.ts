@@ -8,13 +8,17 @@ import { execSync } from 'node:child_process';
 export function CreateAndInstallNpmProjectLazily(projectRoot:string, pj:IPackageJson){
   const pjContent=JSON.stringify(pj);
   const pjPath=path.join(projectRoot, "package.json")
-  var install=false;
+  var needToCallNpmInstall=false;
   if(pj.dependencies && (!fs.existsSync(pjPath) || fs.readFileSync(pjPath).toString()!=pjContent)){
     writeFileCreateDirLazy(pjPath, pjContent);
-    console.log(`Written new package.json file to ${projectRoot}`);
-    install=true;
+    console.log(`Written new package.json file to ${projectRoot} because package.json ${fs.existsSync(pjPath)?"does not exist":"changed"} -->call npm i`);
+    needToCallNpmInstall=true;
   }
-  if(install || !fs.existsSync(path.join(projectRoot, "node_modules"))){
+  if(!fs.existsSync(path.join(projectRoot, "node_modules"))){
+      console.log(`node_modules does not exist -->call npm i`);
+      needToCallNpmInstall=true;
+  }
+  if(needToCallNpmInstall){
     
     const filterStdOut = (l: string) => true;
     const cmd = `npm install`

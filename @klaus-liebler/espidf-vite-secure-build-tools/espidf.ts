@@ -13,8 +13,6 @@ const IDF_PATH=globalThis.process.env.IDF_PATH as string;
 const NVS_PARTITION_GEN_TOOL=path.join(IDF_PATH, "components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py");
 
 
-
-
 export async function createRandomFlashEncryptionKeyLazily(c:Context) {
   const p = new P.Paths(c);
   
@@ -86,7 +84,6 @@ function parsePartitionsCSVFromFile(filePath: string): IPartitionTableEntry[] {
 
 
 export async function buildFirmware(c:Context) {
-  const p = new P.Paths(c);
   exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, (l)=>l.startsWith("Successfully created"));
 }
 /*
@@ -99,9 +96,8 @@ All app type partitions
 */
 
 export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c:Context) {
-  const p = new P.Paths(c);
   [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s=>{
-    espsecure(`encrypt_flash_data --aes_xts --keyfile ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(p.P_BUILD, s.file)}`, ()=>false);
+    espsecure(`encrypt_flash_data --aes_xts --keyfile ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(c.p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(c.p.P_BUILD, s.file)}`, ()=>false);
   })
   console.log('Encryption finished');
 }
@@ -118,13 +114,13 @@ export function nvs_partition_gen(c:Context, encrypt:boolean, filterStdOut: (lin
   }
 
   if(encrypt){
-    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey " NO THIS IS NOT THE FLASH KEY, THIS IS A SEPARATE KEY SPECIFIC FOR NVS ENCRYPTION, see https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32s3/api-reference/storage/nvs_encryption.html ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey " NO THIS IS NOT THE FLASH KEY, THIS IS A SEPARATE KEY SPECIFIC FOR NVS ENCRYPTION, see https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32s3/api-reference/storage/nvs_encryption.html ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
     exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
-    return {encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+    return {encrypted:true, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
   }else{
-    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} generate  "${path.join(p.GENERATED_NVS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} generate  "${path.join(p.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
     exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
-    return {encrypted:false, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+    return {encrypted:false, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
   }
 }
 
@@ -141,7 +137,7 @@ export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_i
   c.f!.storage.file=path.join(p.P_BUILD, c.f!.storage.file)
   sections.push(c.f!.storage); //c.f!.storage is not encrypted!
 
-  if(fs.existsSync(path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME))){
+  if(fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))){
     const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
     
     if(!nvsPartitionInfo.Offset)throw new Error(`nvsPartitionInfo.Offset must be defined`)
@@ -149,9 +145,9 @@ export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_i
     //NOW: nvs-Partition is not encrypted
     if(write_nvs){
       if(nvs_is_encrypted){
-        sections.push({encrypted:true, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+        sections.push({encrypted:true, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
       }else{
-        sections.push({encrypted:false, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+        sections.push({encrypted:false, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
       }
     }
   }
@@ -178,8 +174,8 @@ export async function flashFirmware(c:Context, write_nvs:boolean, write_storage:
   if(write_nvs){
     const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
     if(!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
-    if(!fs.existsSync(path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
-    sections.push({encrypted:false, file:path.join(p.GENERATED_NVS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+    if(!fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
+    sections.push({encrypted:false, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
   }
   
   sections.forEach(s=>{
@@ -226,7 +222,7 @@ export function tool(tool: string, params: string, filterStdOut: (line:string)=>
   exec_in_idf_terminal(cmd, workingDirectory, filterStdOut)
 }
 
-export function spiffsgen(image_size: number, base_dir:string, output_file:string, filterStdOut: (line:string)=>boolean=(l)=>true, workingDirectory: string="./") {
+export function spiffsgen_deprecated_use_littlefs_instead(image_size: number, base_dir:string, output_file:string, filterStdOut: (line:string)=>boolean=(l)=>true, workingDirectory: string="./") {
   const cmd = `python.exe spiffsgen.py ${image_size} ${base_dir} ${output_file} `
   exec_in_idf_terminal(cmd, workingDirectory, filterStdOut)
 }

@@ -22,7 +22,7 @@ function generate_partition_csv(pa:P.Paths, theusersettings:ConfigGroup[]) {
       ci.RenderNvsPartitionGenerator(codeBuilder);
     });
   });
-  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS, P.NVS_CSV_FILENAME), codeBuilder.Code);
+  writeFileCreateDirLazy(path.join(pa.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME), codeBuilder.Code);
 }
 
 function generate_cpp_accessor(p:P.Paths, theusersettings:ConfigGroup[]) {
@@ -52,7 +52,7 @@ function generate_cpp_accessor(p:P.Paths, theusersettings:ConfigGroup[]) {
 
   });
   codeBuilder.AppendLine(`}`)
-  writeFileCreateDirLazy(path.join(p.GENERATED_NVS, P.NVS_CPP_HEADER_FILENAME), codeBuilder.Code);
+  writeFileCreateDirLazy(path.join(p.GENERATED_USERSETTINGS, P.NVS_CPP_HEADER_FILENAME), codeBuilder.Code);
 }
 
 
@@ -66,10 +66,10 @@ export async function generate_usersettings(c:Context, cfg:ConfigGroup[]) {
   //this is necessary to copy the usersettings (the project specific file, that contains all settings) in the context of the browser client project. 
   // There, the usersettings_base.ts is totally different from the one used in the build process
   const USERSETTINGS_TS_FILE="usersettings.ts"
-  fs.cpSync(pa.P_USERSETTINGS_PATH, path.join(pa.GENERATED_NVS_TS, USERSETTINGS_TS_FILE), { recursive: true });
-  writeFileCreateDirLazy(path.join(pa.GENERATED_NVS_TS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/usersettings_runtime"`);
+  fs.cpSync(pa.P_USERSETTINGS_PATH, path.join(pa.GENERATED_USERSETTINGS_TS, USERSETTINGS_TS_FILE), { recursive: true });
+  writeFileCreateDirLazy(path.join(pa.GENERATED_USERSETTINGS_TS, "usersettings_import_adapter.ts"), `export * from "@klaus-liebler/usersettings_runtime"`);
   npm.CreateAndInstallNpmProjectLazily(
-    pa.GENERATED_NVS_TS,
+    pa.GENERATED_USERSETTINGS_TS,
     {
       name:"@generated/usersettings",
       version:"0.0.1",
