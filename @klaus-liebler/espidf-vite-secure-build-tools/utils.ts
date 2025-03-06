@@ -33,6 +33,7 @@ export function cleanNpmExcept_PackageJson_node_modules(targetDir:string){
     const fullPath = path.join(targetDir, item);
     const stats=fs.statSync(fullPath)
     if(stats.isDirectory()){
+      console.info(fullPath)
       if(fullPath.indexOf("node_modules")>=0) continue
       fs.rmSync(fullPath, {recursive:true, force:true})
     }else if(stats.isFile()){

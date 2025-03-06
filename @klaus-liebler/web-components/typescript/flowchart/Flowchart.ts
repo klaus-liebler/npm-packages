@@ -9,14 +9,14 @@ import * as flatbuffers from 'flatbuffers';
 import { SimulationManager } from "./SimulationManager";
 import { FlowchartData, OperatorData, LinkData } from "./FlowchartData";
 import { FilelistDialog, FilenameDialog, OkDialog } from "../dialog_controller";
-import { Namespace, RequestDebugData, RequestFbdRun, ResponseDebugData, ResponseFbdRun, Responses, ResponseWrapper } from "@generated/flatbuffers_ts/functionblock";
+import { Namespace, RequestWrapper, RequestDebugData, RequestFbdRun, ResponseDebugData, ResponseFbdRun, Responses, ResponseWrapper, Requests } from "@generated/flatbuffers_ts/functionblock";
 import { Menu, MenuItem, MenuManager } from "./MenuManager";
 import { KeyValueTuple, Severity } from "@klaus-liebler/commons";
 
 //see devicemanager.hh
 const FBDSTORE_BASE_DIRECTORY = "/spiffs/fbdstore/";    
-const DEFAULT_FBD_FILEPATH =  "/spiffs/default.fbd";
-const TEMP_FBD_FILEPATH = "/spiffs/temp.fbd";
+const DEFAULTFBD_FBD_FILEPATH =  "/spiffs/defaultfbd.fbd";
+const TEMPFBD_FBD_FILEPATH = "/spiffs/tempfbd.fbd";
 
 export class FlowchartOptions {
     canUserEditLinks: boolean = true;
@@ -32,6 +32,9 @@ export class FlowchartOptions {
     multipleLinksOnInput: boolean = false;
     linkVerticalDecal: number = 0;
     httpServerBasePath="/files"
+    constructor(httpServerPrexix:string){
+        this.httpServerBasePath=httpServerPrexix+this.httpServerBasePath;
+    }
 }
 
 export class FlowchartCallback {
@@ -58,9 +61,10 @@ enum FlowchartMode{
 export class Flowchart {
     TriggerDebug() {
         if(this.mode!=FlowchartMode.DEBUG) return;
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestDebugData.createRequestDebugData(b))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        var b = new flatbuffers.Builder(1024);
+        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestDebugData, RequestDebugData.createRequestDebugData(b)));
+        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
+
     }
     OnMessage(namespace: number, bb: flatbuffers.ByteBuffer) {
         if(namespace!=Namespace.Value) return;
@@ -110,11 +114,20 @@ export class Flowchart {
     private markerCircle: SVGCircleElement|null=null;
 
     private onResponseDebugData(d: ResponseDebugData) {
-        if(this.mode!=FlowchartMode.DEBUG) return;
-        if (this.currentDebugInfo == null) return;
+        
+        console.info(`Received debug data`);
+        
+        if(this.mode!=FlowchartMode.DEBUG){
+            console.warn(`this.mode!=FlowchartMode.DEBUG, is ${FlowchartMode[this.mode]}`)
+            return;
+        }
+        if (this.currentDebugInfo == null){
+            console.warn(`this.currentDebugInfo == null`)
+            return;
+        }
 
         if (d.debugInfoHash() != this.currentDebugInfo.hash) {
-            console.error("hash!=this.currentDebugInfo.hash");
+            console.error(`${d.debugInfoHash()} != ${this.currentDebugInfo.hash}`);
             this.currentDebugInfo = null;
             return;
         }
@@ -287,7 +300,7 @@ export class Flowchart {
         }
     }
 
-    private fbd2json(): string {
+    private createFlowchartDataJSONString(): string {
         let operators: OperatorData[] = [];
         let links: LinkData[] = [];
         for (const op of this.operators.values()) {
@@ -302,28 +315,41 @@ export class Flowchart {
                 toInput: link.To.LocalConnectorIndex,
             });
         }
-        let data: FlowchartData = { operators: operators, links: links };
-        return JSON.stringify(data);
+        return JSON.stringify({ operators: operators, links: links });
     }
 
-    private saveJSONToLocalFile() {
-        let text = this.fbd2json();
-        let filename = "functionBlockDiagram.json";
-        var element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        element.setAttribute('download', filename);
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
+    private createFbdFile(){
+        //Die Datei besteht aus
+        //4 Bytes mit der Länge des Binärteils
+        //Dem Binärteil
+        //Dem JSON-Teil, der die grafische Darstellung enthält
+        var compilerInstance = new FlowchartCompiler(this.operators);
+        var guidAndBufAndMap = compilerInstance.Compile();
+        this.currentDebugInfo=guidAndBufAndMap;
+        var viewByteLength = new DataView(new ArrayBuffer(4));
+        viewByteLength.setUint32(0, guidAndBufAndMap.buf.byteLength, true); //ESP32 is little-endian: true für little-endian, false für big-endian
+        var stringBuffer = new TextEncoder().encode(this.createFlowchartDataJSONString()).buffer;
+        var combinedBuffer = new Uint8Array(viewByteLength.byteLength + guidAndBufAndMap.buf.byteLength + stringBuffer.byteLength);
+        combinedBuffer.set(new Uint8Array(viewByteLength.buffer), 0);
+        combinedBuffer.set(new Uint8Array(guidAndBufAndMap.buf), 4);
+        combinedBuffer.set(new Uint8Array(stringBuffer), 4 + guidAndBufAndMap.buf.byteLength);
+        return combinedBuffer 
     }
 
-    private saveBinToLocalFile() {
-        let compilerInstance = new FlowchartCompiler(this.operators);
-        let binFile = compilerInstance.Compile();
-        let blob = new Blob([new Uint8Array(binFile.buf, 0, binFile.buf.byteLength)], { type: "octet/stream" });
+    private parseFbdFile(arrayBuffer:ArrayBuffer):FlowchartData {
+        const dataView = new DataView(arrayBuffer);
+        // Lesen Sie die Länge des Binärteils (erste 4 Bytes)
+        const binaryLength = dataView.getUint32(0, true);
+        // Extrahieren Sie den Binär- und den JSON-Teil
+        const _binaryPart = new Uint8Array(arrayBuffer, 4, binaryLength);
+        const jsonPart = new TextDecoder().decode(arrayBuffer.slice(4 + binaryLength));
+        return JSON.parse(jsonPart);
+    }
+
+    private saveFbdToLocalFile() {
+        let blob = new Blob([this.createFbdFile()], { type: "octet/stream" });
         let url = window.URL.createObjectURL(blob);
-        let filename = "functionBlockDiagram.bin";
+        let filename = "functionBlockDiagram.fbd";
         var element = document.createElement('a');
         element.style.display = 'none';
         element.href = url;
@@ -333,134 +359,152 @@ export class Flowchart {
         document.body.removeChild(element);
     }
 
-    private openFromLocalFile(files: FileList | null) {
+    private openFbdFromLocalFile(files: FileList | null) {
         if (files == null || files.length != 1) return;
         const reader = new FileReader();
         reader.onloadend = (e) => {
-            let s: string = <string>e.target!.result;
-            let data = <FlowchartData>JSON.parse(s);
-            this.setData(data);
+            let buf: ArrayBuffer = <ArrayBuffer>e.target!.result;
+            this.setData(this.parseFbdFile(buf));
         }
-        reader.readAsText(files[0]);
+        reader.readAsArrayBuffer(files[0]);
     }
 
     private onResponseFbdRun(m:ResponseFbdRun){
         this.appManagement.ShowSnackbar(Severity.SUCCESS,`File now runs on Lab@Home`);
     }
 
-    private postFbdFileToLabathome(path:string, onSuccessAction?:(path:string)=>void, onFailAction?:(path:string)=>void){
-        var compilerInstance = new FlowchartCompiler(this.operators);
-        var guidAndBufAndMap: HashAndBufAndMaps = compilerInstance.Compile();
-        var view1 = new DataView(new ArrayBuffer(4));
-        view1.setUint32(0, guidAndBufAndMap.buf.byteLength, true); //ESP32 is little-endian: true für little-endian, false für big-endian
-        var stringBuffer = new TextEncoder().encode(this.fbd2json()).buffer;
-        var combinedBuffer = new Uint8Array(view1.byteLength + guidAndBufAndMap.buf.byteLength + stringBuffer.byteLength);
-        combinedBuffer.set(new Uint8Array(view1.buffer), 0);
-        combinedBuffer.set(new Uint8Array(guidAndBufAndMap.buf), 4);
-        combinedBuffer.set(new Uint8Array(stringBuffer), 4 + guidAndBufAndMap.buf.byteLength);
+    private async postFbdFile(path:string, onSuccessAction?:(path:string)=>void, onFailAction?:(path:string)=>void){
 
-        let xhr_json = new XMLHttpRequest;
-        xhr_json.open("POST",this.options.httpServerBasePath+path, true);
-        xhr_json.onloadend = (e) => {
-            if(xhr_json.status!=200){
-                this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `HTTP Error ${xhr_json.status}`));
-                if(onFailAction)onFailAction(path)
+        try {
+            const response = await fetch(this.options.httpServerBasePath + path, {
+                method: 'POST',
+                body: this.createFbdFile(),
+                headers: {
+                'Content-Type': 'application/octet-stream'
+                }
+            });
+
+            if (!response.ok) {
+                this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `HTTP Error ${response.status}`));
+                if (onFailAction) onFailAction(path);
                 return;
             }
+
             this.appManagement.ShowSnackbar(Severity.SUCCESS, `Successfully saved`);
-            if(onSuccessAction)onSuccessAction(path)
+            if (onSuccessAction) onSuccessAction(path);
+
+        } catch (error) {
+            console.error('There was a problem with the post operation:', error);
+            this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Generic Error`));
+            if (onFailAction) onFailAction(path);
         }
-        xhr_json.onerror = (e) => { 
-            this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Generic Error`))
-            if(onFailAction)onFailAction(path)    
-        }
-        xhr_json.send(combinedBuffer);
     }
 
-    private getFbdFileFromLabathome(path:string){
-        let xhr = new XMLHttpRequest;
-        xhr.open("GET", this.options.httpServerBasePath+path, true);
-        xhr.responseType="arraybuffer"
-        xhr.onload = (e) => {
-            let s = xhr.response as ArrayBuffer;
-            var dv = new DataView(s);
-            var sizeOfBinary= dv.getUint32(0, true);
-            //var the_binary = s.slice(4, 4+sizeOfBinary);
-            var the_json = new TextDecoder().decode(s.slice(4+sizeOfBinary));
+    private async getFbdFile(path: string) {
+        try {
+            const response = await fetch(this.options.httpServerBasePath + path);
+            if (!response.ok) {
+                throw new Error(`Failed to load file from path:path:${response.statusText}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            if (arrayBuffer.byteLength === 0) {
+                console.error(`Error loading file from ${path}: File has size 0`);
+                return;
+            }
+            const the_json = new TextDecoder().decode(arrayBuffer);
             this.setData(<FlowchartData>JSON.parse(the_json));
+        } catch (error) {
+            this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Failed to load file from ${path}`));
+            console.error(`Error loading file from ${path}:`, error);
         }
-        xhr.send();
     }
 
-    private deleteFdbFileFromLabathome(path:string){
-        let xhr = new XMLHttpRequest;
-        xhr.open("DELETE", this.options.httpServerBasePath+path, true); //GET with the filename selected in the dialog
-        xhr.onloadend = (e) => {
+    private async deleteFdbFile(path) {
+        try {
+            const response = await fetch(this.options.httpServerBasePath + path, {
+                method: 'DELETE',
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Failed to delete file, status: ${response.status}`);
+            }
+    
             this.appManagement.ShowSnackbar(Severity.SUCCESS, `File ${path} deleted successfully`);
+        } catch (error) {
+            console.error('There was a problem with the delete operation:', error);
+            this.appManagement.ShowSnackbar(Severity.ERROR, `Failed to delete file ${path}: ${error.message}`);
         }
-        xhr.send();
     }
 
-    private getFbdFileListFromLabathome(path_with_slash_at_the_end:string){
-        let xhr = new XMLHttpRequest;
-        xhr.open("GET", this.options.httpServerBasePath+path_with_slash_at_the_end, true);
-        xhr.onload = (e) => {
-            let s = xhr.responseText;
-            let data = <{files:string[], dirs:string[]}>JSON.parse(s);
-            this.appManagement.ShowDialog(new FilelistDialog(data.files,
-                (ok:boolean, filename:string)=>{
-                    if(!ok) return;
-                    this.getFbdFileFromLabathome(path_with_slash_at_the_end+filename);
+    private async getFbdFileList(path_with_slash_at_the_end:string) {
+        try {
+            const response = await fetch(this.options.httpServerBasePath + path_with_slash_at_the_end);
+            
+            if (!response.ok) {
+                throw new Error(`Network response was not ok, status: ${response.status}`);
+            }
+    
+            const data = await response.json();
+    
+            if (!data.files || !data.dirs) {
+                throw new Error('Response format is incorrect');
+            }
+    
+            this.appManagement.ShowDialog(new FilelistDialog((<string[]>data.files).filter(v=>v.endsWith(".fbd")),
+                (ok, filename) => {
+                    if (!ok) return;
+                    this.getFbdFile(path_with_slash_at_the_end + filename);
                 },
-                (ok:boolean, filename:string)=>{
-                    if(!ok) return;
-                    this.deleteFdbFileFromLabathome(path_with_slash_at_the_end+filename);
+                (ok, filename) => {
+                    if (!ok) return;
+                    this.deleteFdbFile(path_with_slash_at_the_end + filename);
                 }
             ));
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+            // Optionally, provide user feedback about the error
         }
-        xhr.send();
     }
 
     private enterFilenameAndPostFbd(){
         this.appManagement.ShowDialog(new FilenameDialog("Enter filename (without Extension", (ok:boolean, filename:string)=>{
             if(!ok) return
-            this.postFbdFileToLabathome(FBDSTORE_BASE_DIRECTORY+filename+".fbd")
+            this.postFbdFile(FBDSTORE_BASE_DIRECTORY+filename+".fbd")
         }));
 
     }
     
-
-
     private buildMenu(subcontainer: HTMLDivElement) {
         let fileInput = <HTMLInputElement>Html(subcontainer, "input", ["type", "file", "id", "fileInput", "accept", ".json"]);
         fileInput.style.display = "none";
         fileInput.onchange = (e) => {
-            this.openFromLocalFile(fileInput.files);
+            this.openFbdFromLocalFile(fileInput.files);
         }
         var mm:MenuManager=new MenuManager(
             [
                 new Menu("File", [
                     new MenuItem("📂 Open (Local)", ()=>fileInput.click()),
-                    new MenuItem("📂 Open (labathome)", ()=>this.getFbdFileListFromLabathome(FBDSTORE_BASE_DIRECTORY)),
-                    new MenuItem("📂 Open Default (labathome)", ()=>this.getFbdFileFromLabathome(DEFAULT_FBD_FILEPATH)),
-                    new MenuItem("💾 Save (Local)", ()=>this.saveJSONToLocalFile()),
+                    new MenuItem("📂 Open (labathome)", ()=>this.getFbdFileList(FBDSTORE_BASE_DIRECTORY)),
+                    new MenuItem("📂 Open Default (labathome)", ()=>this.getFbdFile(DEFAULTFBD_FBD_FILEPATH)),
+                    new MenuItem("💾 Save (Local)", ()=>this.saveFbdToLocalFile()),
                     new MenuItem("💾 Save (labathome)", ()=>this.enterFilenameAndPostFbd()),
-                    new MenuItem("💾 Save Bin (Local)", ()=>this.saveBinToLocalFile()),
                 ]),
                 new Menu("Debug",[
-                    new MenuItem("☭ Start Debug", ()=>this.postFbdFileToLabathome(TEMP_FBD_FILEPATH, 
+                    new MenuItem("☭ Start Debug", ()=>this.postFbdFile(TEMPFBD_FBD_FILEPATH, 
                         (p:string)=>{
-                            let b = new flatbuffers.Builder(1024);
-                            b.finish(RequestFbdRun.createRequestFbdRun(b));
+
+                            var b = new flatbuffers.Builder(1024);
+                            b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestFbdRun, RequestFbdRun.createRequestFbdRun(b)));
                             this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
                             this.mode=FlowchartMode.DEBUG;
+                            this.currentDebugInfo
                         },
                         (p:string)=>{
                            console.error(`As file "${p}" could no be saved on labathome, the RequestFbdRun will not be sent to labathome`)
                         }
                     )),
                     new MenuItem("× Stop Debug", ()=>this.mode=FlowchartMode.EDIT), 
-                    new MenuItem("👣 Set as Startup-App", ()=>this.postFbdFileToLabathome(DEFAULT_FBD_FILEPATH)), 
+                    new MenuItem("👣 Set as Startup-App", ()=>this.postFbdFile(DEFAULTFBD_FBD_FILEPATH)), 
                 ]),
                 new Menu("Simulation",[
                     new MenuItem("➤ Start Simulation", ()=>{
@@ -550,7 +594,7 @@ export class Flowchart {
             this.operators.set(o.GlobalOperatorIndex, o);
         });
 
-        this.getFbdFileFromLabathome(DEFAULT_FBD_FILEPATH);
+        this.getFbdFile(DEFAULTFBD_FBD_FILEPATH);
         this.recreateFlowchartFromData();
     }
 

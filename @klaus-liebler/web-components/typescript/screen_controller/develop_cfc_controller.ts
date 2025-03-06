@@ -5,8 +5,7 @@ import { IAppManagement } from "../utils/interfaces";
 import { ScreenController } from "./screen_controller";
 import { createRef, ref, Ref } from "lit-html/directives/ref.js";
 import { ByteBuffer } from "flatbuffers";
-
-
+import { Namespace } from "@generated/flatbuffers_ts/functionblock";
 
 export class DevelopCFCController extends ScreenController {
     
@@ -33,11 +32,12 @@ export class DevelopCFCController extends ScreenController {
     }
     public OnCreate() { }
     
-    constructor(appManagement:IAppManagement) {
+    constructor(appManagement:IAppManagement, httpServerPrexix="") {
         super(appManagement);
         let data: FlowchartData = {operators:[],links:[]};
-        let options = new FlowchartOptions();
+        let options = new FlowchartOptions(httpServerPrexix);
         let callbacks = new FlowchartCallback();
         this.fc = new Flowchart(this.appManagement, data, callbacks, options);
+        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
     }
 }

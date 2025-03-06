@@ -124,7 +124,7 @@ export function nvs_partition_gen(c:Context, encrypt:boolean, filterStdOut: (lin
   }
 }
 
-export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_is_encrypted:boolean) {
+export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_is_encrypted:boolean, write_storage:boolean) {
   const p = new P.Paths(c);
   const pi=await FindProbablePort();
   if(!pi){
@@ -134,8 +134,11 @@ export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_i
   const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
   
   sections.forEach(e=>e.file=path.join(p.P_BUILD,e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
-  c.f!.storage.file=path.join(p.P_BUILD, c.f!.storage.file)
-  sections.push(c.f!.storage); //c.f!.storage is not encrypted!
+  if(write_storage){
+    c.f!.storage.file=path.join(p.P_BUILD, c.f!.storage.file)
+    sections.push(c.f!.storage); //c.f!.storage is not encrypted!
+  }
+
 
   if(fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))){
     const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;

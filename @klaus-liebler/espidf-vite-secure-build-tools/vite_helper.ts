@@ -14,7 +14,7 @@ export async function buildAndCompressWebProject(projectRoot: string, outDir: st
     },
     build: {
       //minify: true,
-      //sourcemap:"inline",
+      sourcemap:true,
       cssCodeSplit: false,
       outDir: outDir,
       emptyOutDir: true,

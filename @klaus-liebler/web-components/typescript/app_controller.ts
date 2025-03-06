@@ -128,7 +128,12 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     }
     let bb = new flatbuffers.ByteBuffer(new Uint8Array(arrayBuffer, 4))
     //let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb)
-    this.namespace2listener.get(namespace)?.forEach((v) => {
+    const listeners = this.namespace2listener.get(namespace);
+    if(!listeners ||listeners.length==0){
+      console.warn(`No Listeners registered for messages with namespace ${namespace}`)
+      return;
+    }
+    listeners.forEach((v) => {
       v.OnMessage(namespace, bb)
     })
   }

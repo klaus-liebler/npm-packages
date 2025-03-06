@@ -14,8 +14,9 @@ export function CreateAndInstallNpmProjectLazily(projectRoot:string, pj:IPackage
     console.log(`Written new package.json file to ${projectRoot} because package.json ${fs.existsSync(pjPath)?"does not exist":"changed"} -->call npm i`);
     needToCallNpmInstall=true;
   }
-  if(!fs.existsSync(path.join(projectRoot, "node_modules"))){
-      console.log(`node_modules does not exist -->call npm i`);
+  const nmp = path.join(projectRoot, "node_modules\\")
+  if(pj.dependencies && !fs.existsSync(nmp)){
+      console.log(`${nmp} does not exist -->call npm i`);
       needToCallNpmInstall=true;
   }
   if(needToCallNpmInstall){
