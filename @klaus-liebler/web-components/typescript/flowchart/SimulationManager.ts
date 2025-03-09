@@ -109,7 +109,7 @@ export class SimulationManager implements SimulationContext{
             let value = this.floats[adressOffset]
             let linksToChange=kv[1];
             linksToChange.forEach((e)=>{
-                e.SetCaption(""+value);
+                e.SetCaption(`${value}`);
             });
         }
         //colorize colors links

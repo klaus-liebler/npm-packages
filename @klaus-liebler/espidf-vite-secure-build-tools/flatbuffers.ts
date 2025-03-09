@@ -6,7 +6,6 @@ import * as npm from "./npm"
 
 export async function flatbuffers_generate(options: string, inputFile: string, outputBaseDir: string) {
   const cmd = `flatc ${options} -o ${outputBaseDir} ${inputFile}`
-  console.info(`Processing flatbuffer schema ${inputFile} with options ${options}`)
   execSync(cmd, {
     env: process.env
   });

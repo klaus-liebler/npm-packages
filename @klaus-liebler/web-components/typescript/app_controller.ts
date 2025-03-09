@@ -1,5 +1,5 @@
 import "../style/app.css"
-import { TemplateResult, html, render } from "lit-html";
+import { TemplateResult, html, render, svg } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import * as flatbuffers from "flatbuffers";
 import { Chatbot } from "./chatbot";
@@ -7,7 +7,7 @@ import { DialogController, OkDialog } from "./dialog_controller";
 import { runCarRace } from "./screen_controller/racinggame_controller";
 import { DefaultScreenController, ScreenController } from "./screen_controller/screen_controller";
 import { Html} from "./utils/common";
-import { MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol } from "@klaus-liebler/commons";
+import { MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol, svgString2dataUrlBase64 } from "@klaus-liebler/commons";
 import { IAppManagement, IScreenControllerHost, IWebsocketMessageListener } from "./utils/interfaces";
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
@@ -207,8 +207,9 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     if(this.activateChatbot){
       this.chatbot = new Chatbot();
     }
+
     const Template = html`
-            <header style="background-image: url('data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnICB3aWR0aD0nNTU5JyBoZWlnaHQ9JzY3LjEnIHZpZXdCb3g9JzAgMCAxMDAwIDEyMCc+PHJlY3QgZmlsbD0nI0ZGRkZGRicgd2lkdGg9JzEwMDAnIGhlaWdodD0nMTIwJy8+PGcgIGZpbGw9J25vbmUnIHN0cm9rZT0nI0M5RUVENicgc3Ryb2tlLXdpZHRoPScxNCcgc3Ryb2tlLW9wYWNpdHk9JzEnPjxwYXRoIGQ9J00tNTAwIDc1YzAgMCAxMjUtMzAgMjUwLTMwUzAgNzUgMCA3NXMxMjUgMzAgMjUwIDMwczI1MC0zMCAyNTAtMzBzMTI1LTMwIDI1MC0zMHMyNTAgMzAgMjUwIDMwczEyNSAzMCAyNTAgMzBzMjUwLTMwIDI1MC0zMCcvPjxwYXRoIGQ9J00tNTAwIDQ1YzAgMCAxMjUtMzAgMjUwLTMwUzAgNDUgMCA0NXMxMjUgMzAgMjUwIDMwczI1MC0zMCAyNTAtMzBzMTI1LTMwIDI1MC0zMHMyNTAgMzAgMjUwIDMwczEyNSAzMCAyNTAgMzBzMjUwLTMwIDI1MC0zMCcvPjxwYXRoIGQ9J00tNTAwIDEwNWMwIDAgMTI1LTMwIDI1MC0zMFMwIDEwNSAwIDEwNXMxMjUgMzAgMjUwIDMwczI1MC0zMCAyNTAtMzBzMTI1LTMwIDI1MC0zMHMyNTAgMzAgMjUwIDMwczEyNSAzMCAyNTAgMzBzMjUwLTMwIDI1MC0zMCcvPjxwYXRoIGQ9J00tNTAwIDE1YzAgMCAxMjUtMzAgMjUwLTMwUzAgMTUgMCAxNXMxMjUgMzAgMjUwIDMwczI1MC0zMCAyNTAtMzBzMTI1LTMwIDI1MC0zMHMyNTAgMzAgMjUwIDMwczEyNSAzMCAyNTAgMzBzMjUwLTMwIDI1MC0zMCcvPjxwYXRoIGQ9J00tNTAwLTE1YzAgMCAxMjUtMzAgMjUwLTMwUzAtMTUgMC0xNXMxMjUgMzAgMjUwIDMwczI1MC0zMCAyNTAtMzBzMTI1LTMwIDI1MC0zMHMyNTAgMzAgMjUwIDMwczEyNSAzMCAyNTAgMzBzMjUwLTMwIDI1MC0zMCcvPjxwYXRoIGQ9J00tNTAwIDEzNWMwIDAgMTI1LTMwIDI1MC0zMFMwIDEzNSAwIDEzNXMxMjUgMzAgMjUwIDMwczI1MC0zMCAyNTAtMzBzMTI1LTMwIDI1MC0zMHMyNTAgMzAgMjUwIDMwczEyNSAzMCAyNTAgMzBzMjUwLTMwIDI1MC0zMCcvPjwvZz48L3N2Zz4=');">
+            <header>
               <span @click=${() => this.easteregg()}> ${this.appTitle} </span>
             </header>
             <nav>${this.menu.Template()}<a href="javascript:void(0);" @click=${() => this.menu.ToggleHamburgerMenu()}><i>≡</i></a></nav>

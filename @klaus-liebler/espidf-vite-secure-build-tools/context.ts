@@ -75,6 +75,7 @@ export class Context {
       boardInfo = {
         board_name: config.defaultBoardName,
         board_version: config.defaultBoardVersion,
+        board_roles:"",
         board_settings: {},
         first_connected_dt: Date.now(),
         last_connected_dt: Date.now(),

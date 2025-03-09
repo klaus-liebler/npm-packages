@@ -325,13 +325,21 @@ class ESP32S3 extends ESP32Type {
         var data_regs_efuses = await this.loader.readRegisters(ESP32S3.EFUSE_RD_REPEAT_DATA1_REG, 2);
         const purposes=[((data_regs_efuses[0]>>24)& 0xF) as KeyPurpose, ((data_regs_efuses[0]>>28)& 0xF) as KeyPurpose, ((data_regs_efuses[1]>>0)& 0xF) as KeyPurpose,((data_regs_efuses[1]>>4)& 0xF) as KeyPurpose,((data_regs_efuses[1]>>8)& 0xF) as KeyPurpose,((data_regs_efuses[1]>>12)& 0xF) as KeyPurpose,];
         const SPI_BOOT_CRYPT_CNT = (data_regs_efuses[0]>>18)& 0x7
-        if(purposes[0]==KeyPurpose.XTS_AES_256_KEY_1 && purposes[1]==KeyPurpose.XTS_AES_256_KEY_2) this._hasEncryptionKey=true;
+        if(purposes[0]==KeyPurpose.XTS_AES_256_KEY_1 && purposes[1]==KeyPurpose.XTS_AES_256_KEY_2){
+            if(!(SPI_BOOT_CRYPT_CNT==0b1 || SPI_BOOT_CRYPT_CNT==0b11 || SPI_BOOT_CRYPT_CNT==0b111)){
+                throw Error(`Encryption Key is XTS_AES_256, but SPI_BOOT_CRYPT_CNT has no odd number of ones, but 0b${SPI_BOOT_CRYPT_CNT.toString(2)}`);	
+            }
+            this._hasEncryptionKey=true;
+        }
+        else if(purposes[0]==KeyPurpose.XTS_AES_128_KEY && purposes[1]==KeyPurpose.USER_EMPTY){
+            if(!(SPI_BOOT_CRYPT_CNT==0b1 || SPI_BOOT_CRYPT_CNT==0b11 || SPI_BOOT_CRYPT_CNT==0b111)){
+                throw Error(`Encryption Key is XTS_AES_128, but SPI_BOOT_CRYPT_CNT has no odd number of ones, but 0b${SPI_BOOT_CRYPT_CNT.toString(2)}`);	
+            }
+            this._hasEncryptionKey=true;
+        }
         else if(!(purposes[0]==KeyPurpose.USER_EMPTY && purposes[1]==KeyPurpose.USER_EMPTY)){
             throw Error("Unexpected key purposes");
-        }
-        if(this.hasEncryptionKey && !(SPI_BOOT_CRYPT_CNT==0b1 || SPI_BOOT_CRYPT_CNT==0b11 || SPI_BOOT_CRYPT_CNT==0b111)){
-            throw Error(`Encryption Key is XTS_AES_256, but SPI_BOOT_CRYPT_CNT has no odd number of ones, but 0b${SPI_BOOT_CRYPT_CNT.toString(2)}`);	
-        }
+        } 
     }
 }
 

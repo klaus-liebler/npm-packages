@@ -54,6 +54,7 @@ export class Menu {
         this.menuItems.forEach(mi=>{mi.Render(this.DropContent)});
 
         this.DropContent.onclick = (e) => { this.ToggleShow() };
+        this.Hide();
     }
 }
 

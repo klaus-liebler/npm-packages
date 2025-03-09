@@ -155,6 +155,10 @@ export function strInterpolator(str:string, values_flat: any) {
   });
 }
 
+export function svgString2dataUrlBase64(svg:string){
+  return 'data:image/svg+xml;base64,' + btoa(svg);
+};
+
 export function ArrayBufferToHexString(buffer:ArrayBuffer) {
   // Erstellen Sie eine Uint8Array-Ansicht des ArrayBuffers.
   const byteArray = new Uint8Array(buffer);

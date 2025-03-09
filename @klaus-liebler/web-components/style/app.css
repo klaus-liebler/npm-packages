@@ -112,16 +112,12 @@
           }
         }
       }
-
-
-
     }
   }
 
   body>header {
     font-size: 28px;
     font-weight: bold;
-    background: var(--main-white-color);
     grid-column: 1/span 2;
     grid-row-start: 1/span 1;
     padding: 10px;
@@ -237,8 +233,7 @@ input:invalid:required {
   color: red;
 }
 
-
-svg .iconsize {
+svg.iconsize {
   height: 24px;
   width: 24px;
 }

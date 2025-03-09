@@ -7,39 +7,54 @@ import { mac_12char } from './utils';
 import { FindProbablePort } from './esp32';
 import * as os from "node:os"
 
+export enum EncryptionStrength {
+  AES128 = 256,//AES-128 (256-bit key)
+  AES256 = 512,//AES-256 (512-bit key)
+};
 
-const IDF_PATH=globalThis.process.env.IDF_PATH as string;
+
+const IDF_PATH = globalThis.process.env.IDF_PATH as string;
 //Location of esp idf tools
-const NVS_PARTITION_GEN_TOOL=path.join(IDF_PATH, "components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py");
+const NVS_PARTITION_GEN_TOOL = path.join(IDF_PATH, "components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py");
 
 
-export async function createRandomFlashEncryptionKeyLazily(c:Context) {
-  const p = new P.Paths(c);
-  
-  if (p.existsBoardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)) {
-    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created`);
-    return;
+export async function createRandomFlashEncryptionKeyLazily(c: Context, keySize: EncryptionStrength) {
+  const path = c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME);
+  if (fs.existsSync(path)) {
+    const sizeByte = fs.statSync(path).size;
+    if (sizeByte != keySize / 8) {
+      throw Error(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created, but with wrong size! (is:${sizeByte}Byte, shall:${keySize}/8 byte)`);
+    } else {
+      console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created with correct size ${sizeByte}byte.`);
+      return;
+    }
   }
-  p.createBoardSpecificPathLazy(P.FLASH_KEY_SUBDIR);
-  espsecure(`generate_flash_encryption_key --keylen 256 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}`, (line)=>true);
+  c.p.createBoardSpecificPathLazy(P.FLASH_KEY_SUBDIR);
+  espsecure(`generate_flash_encryption_key --keylen ${keySize} ${path}`, (line) => true);
   console.log('Random Flash Encryption Key successfully generated');
 }
 
-export async function burnFlashEncryptionKeyToAndActivateEncryptedFlash(c:Context) {
+export async function burnFlashEncryptionKeyAndActivateEncryptedFlash(c: Context, keySize: EncryptionStrength) {
   const p = new P.Paths(c);
-  if(c.b.flash_encryption_key_burned_and_activated){
-    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been burned to efuse`);
+  if (c.b.flash_encryption_key_burned_and_activated) {
+    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been burned to efuse and has been activated`);
     return;
   }
-  const pi=await FindProbablePort();
-  if(!pi){
+  const pi = await FindProbablePort();
+  if (!pi) {
     throw Error("No connected Board found")
   }
-  espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`, (l)=>false);
-  espefuse(`--port ${pi.path} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`, (l)=>false);
+  if (keySize == EncryptionStrength.AES128) {
+    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`, (l) => false);
+  } else if (keySize == EncryptionStrength.AES256) {
+    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_256_KEY`, (l) => false);
+  } else {
+    throw Error(`KeySize ${keySize} not implemented`);
+  }
+  espefuse(`--port ${pi.path} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`, (l) => false);
   console.log('Random Flash Encryption Key successfully burned to EFUSE; encryption of flash activated!');
   c.setFlashEncryptionKeyBurnedAndActivated();
-  
+
 }
 
 interface IPartitionTableEntry {
@@ -83,8 +98,8 @@ function parsePartitionsCSVFromFile(filePath: string): IPartitionTableEntry[] {
 
 
 
-export async function buildFirmware(c:Context) {
-  exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, (l)=>l.startsWith("Successfully created"));
+export async function buildFirmware(c: Context) {
+  exec_in_idf_terminal(`idf.py build`, c.c.idfProjectDirectory, (l) => l.startsWith("Successfully created"));
 }
 /*
 With flash encryption enabled, the following types of data are encrypted by default:
@@ -95,142 +110,140 @@ Otadata
 All app type partitions
 */
 
-export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c:Context) {
-  [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s=>{
-    espsecure(`encrypt_flash_data --aes_xts --keyfile ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(c.p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(c.p.P_BUILD, s.file)}`, ()=>false);
+export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c: Context) {
+  [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s => {
+    espsecure(`encrypt_flash_data --aes_xts --keyfile ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(c.p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(c.p.P_BUILD, s.file)}`, () => false);
   })
   console.log('Encryption finished');
 }
 
-export function nvs_partition_gen(c:Context, encrypt:boolean, filterStdOut: (line:string)=>boolean):Section {
+export function nvs_partition_gen(c: Context, encrypt: boolean, filterStdOut: (line: string) => boolean): Section {
   const p = new P.Paths(c);
-  const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
+  const nvsPartitionInfo: IPartitionTableEntry = parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e) => e.Name == "nvs")!;
 
-  if(nvsPartitionInfo.Size%4096!=0){
+  if (nvsPartitionInfo.Size % 4096 != 0) {
     throw new Error(`size_of_nvs_partition_kibibytes must be a multiple of 4096`)
   }
-  if(!nvsPartitionInfo.Offset){
+  if (!nvsPartitionInfo.Offset) {
     throw new Error(`nvsPartitionInfo.Offset must be defined`)
   }
 
-  if(encrypt){
-    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey " NO THIS IS NOT THE FLASH KEY, THIS IS A SEPARATE KEY SPECIFIC FOR NVS ENCRYPTION, see https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32s3/api-reference/storage/nvs_encryption.html ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+  if (encrypt) {
+    const cmd = `python.exe ${NVS_PARTITION_GEN_TOOL} encrypt --inputkey " NO THIS IS NOT THE FLASH KEY, THIS IS A SEPARATE KEY SPECIFIC FOR NVS ENCRYPTION, see https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32s3/api-reference/storage/nvs_encryption.html ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
     exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
-    return {encrypted:true, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
-  }else{
-    const cmd=`python.exe ${NVS_PARTITION_GEN_TOOL} generate  "${path.join(p.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
+    return { encrypted: true, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() };
+  } else {
+    const cmd = `python.exe ${NVS_PARTITION_GEN_TOOL} generate  "${path.join(p.GENERATED_USERSETTINGS, P.NVS_CSV_FILENAME)}" "${path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME)}" ${nvsPartitionInfo.Size}`
     exec_in_idf_terminal(cmd, c.c.idfProjectDirectory, filterStdOut)
-    return {encrypted:false, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()};
+    return { encrypted: false, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() };
   }
 }
 
-export async function flashEncryptedFirmware(c:Context, write_nvs:boolean, nvs_is_encrypted:boolean, write_storage:boolean) {
+export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, nvs_is_encrypted: boolean, write_storage: boolean) {
   const p = new P.Paths(c);
-  const pi=await FindProbablePort();
-  if(!pi){
+  const pi = await FindProbablePort();
+  if (!pi) {
     throw Error("No connected Board found")
   }
 
-  const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
-  
-  sections.forEach(e=>e.file=path.join(p.P_BUILD,e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
-  if(write_storage){
-    c.f!.storage.file=path.join(p.P_BUILD, c.f!.storage.file)
+  const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
+
+  sections.forEach(e => e.file = path.join(p.P_BUILD, e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
+  if (write_storage) {
+    c.f!.storage.file = path.join(p.P_BUILD, c.f!.storage.file)
     sections.push(c.f!.storage); //c.f!.storage is not encrypted!
   }
 
 
-  if(fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))){
-    const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
-    
-    if(!nvsPartitionInfo.Offset)throw new Error(`nvsPartitionInfo.Offset must be defined`)
+  if (fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) {
+    const nvsPartitionInfo: IPartitionTableEntry = parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e) => e.Name == "nvs")!;
+
+    if (!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
     //FOR FUTURE: add nvs-partition only if it exists, filename needs not to be changed, as it is created directly encrypted with correct filename
     //NOW: nvs-Partition is not encrypted
-    if(write_nvs){
-      if(nvs_is_encrypted){
-        sections.push({encrypted:true, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
-      }else{
-        sections.push({encrypted:false, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+    if (write_nvs) {
+      if (nvs_is_encrypted) {
+        sections.push({ encrypted: true, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
+      } else {
+        sections.push({ encrypted: false, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
       }
     }
   }
-  
-  sections.forEach(s=>{
-      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
-      esptool(cmd, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"))
-    })
+  var cmd = `--port ${pi.path} write_flash --flash_size keep`
+  sections.forEach(s => {cmd += ` ${s.offset} ${s.file}`;})
+  esptool(cmd, (line) => line.startsWith("Wrote") || line.startsWith("Hash"))
   console.log('Flash (encrypted) finished');
 }
 
-export async function flashFirmware(c:Context, write_nvs:boolean, write_storage:boolean) {
+export async function flashFirmware(c: Context, write_nvs: boolean, write_storage: boolean) {
   const p = new P.Paths(c);
-  const pi=await FindProbablePort();
-  if(!pi){
+  const pi = await FindProbablePort();
+  if (!pi) {
     throw Error("No connected Board found")
   }
 
-  const sections:Array<Section> =[c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
-  if(write_storage){
+  const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
+  if (write_storage) {
     sections.push(c.f!.storage);
   }
-  sections.forEach(e=>e.file=path.join(p.P_BUILD,e.file))//add path to filename
-  if(write_nvs){
-    const nvsPartitionInfo:IPartitionTableEntry=parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e)=>e.Name=="nvs")!;
-    if(!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
-    if(!fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
-    sections.push({encrypted:false, file:path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset:nvsPartitionInfo.Offset!.toString()})
+  sections.forEach(e => e.file = path.join(p.P_BUILD, e.file))//add path to filename
+  if (write_nvs) {
+    const nvsPartitionInfo: IPartitionTableEntry = parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e) => e.Name == "nvs")!;
+    if (!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
+    if (!fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
+    sections.push({ encrypted: false, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
   }
-  
-  sections.forEach(s=>{
-      const cmd=`--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
-      esptool(cmd, (line)=>line.startsWith("Wrote")||line.startsWith("Hash"))
-    })
+
+  sections.forEach(s => {
+    const cmd = `--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
+    esptool(cmd, (line) => line.startsWith("Wrote") || line.startsWith("Hash"))
+  })
   console.log('Flash (not encrypted) finished');
 }
 
 
 
 
-export function GetProjectDescription(espIdfProjectDirectory: string): IIdfProjectInfo|null{
+export function GetProjectDescription(espIdfProjectDirectory: string): IIdfProjectInfo | null {
   const p = path.join(espIdfProjectDirectory, "build", "project_description.json");
-  if(!fs.existsSync(p)){
+  if (!fs.existsSync(p)) {
     return null;
   }
   return JSON.parse(fs.readFileSync(p).toString()) as IIdfProjectInfo;
 }
 
-export function GetFlashArgs(espIdfProjectDirectory: string): IFlasherConfiguration|null{
+export function GetFlashArgs(espIdfProjectDirectory: string): IFlasherConfiguration | null {
   const p = path.join(espIdfProjectDirectory, "build", "flasher_args.json");
-  if(!fs.existsSync(p)){
+  if (!fs.existsSync(p)) {
     return null;
   }
   return JSON.parse(fs.readFileSync(p).toString()) as IFlasherConfiguration;
 }
 
-export function espefuse(params: string, filterStdOut: (line:string)=>boolean) {
+export function espefuse(params: string, filterStdOut: (line: string) => boolean) {
   tool("espefuse.py", params, filterStdOut)
 }
 
-export function espsecure(params: string, filterStdOut: (line:string)=>boolean) {
+export function espsecure(params: string, filterStdOut: (line: string) => boolean) {
   tool("espsecure.py", params, filterStdOut)
 }
 
-export function esptool(params: string, filterStdOut: (line:string)=>boolean, workingDirectory: string="./") {
+export function esptool(params: string, filterStdOut: (line: string) => boolean, workingDirectory: string = "./") {
   tool("esptool.py", params, filterStdOut, workingDirectory)
 }
 
 
-export function tool(tool: string, params: string, filterStdOut: (line:string)=>boolean=(l)=>true, workingDirectory: string="./") {
+export function tool(tool: string, params: string, filterStdOut: (line: string) => boolean = (l) => true, workingDirectory: string = "./") {
   const cmd = `python.exe ${path.join(IDF_PATH, "components", "esptool_py", "esptool", tool)} ${params} `
   exec_in_idf_terminal(cmd, workingDirectory, filterStdOut)
 }
 
-export function spiffsgen_deprecated_use_littlefs_instead(image_size: number, base_dir:string, output_file:string, filterStdOut: (line:string)=>boolean=(l)=>true, workingDirectory: string="./") {
+export function spiffsgen_deprecated_use_littlefs_instead(image_size: number, base_dir: string, output_file: string, filterStdOut: (line: string) => boolean = (l) => true, workingDirectory: string = "./") {
   const cmd = `python.exe spiffsgen.py ${image_size} ${base_dir} ${output_file} `
   exec_in_idf_terminal(cmd, workingDirectory, filterStdOut)
 }
 
-export function exec_in_idf_terminal(command: string, idfProjectDirectory: string, filterStdOut: (line:string)=>boolean) {
+export function exec_in_idf_terminal(command: string, idfProjectDirectory: string, filterStdOut: (line: string) => boolean) {
   const cmd = `${path.join(IDF_PATH, "export.bat")} && ${command}`
   console.info(`Executing ${cmd}`)
   const stdout = execSync(cmd, {
@@ -238,7 +251,7 @@ export function exec_in_idf_terminal(command: string, idfProjectDirectory: strin
     env: process.env
   });
   if (stdout)
-    stdout.toString().split(os.EOL).filter((v)=>filterStdOut(v)).forEach(v=>console.log(v.toString()))
+    stdout.toString().split(os.EOL).filter((v) => filterStdOut(v)).forEach(v => console.log(v.toString()))
 }
 
 export interface ConfigEnvironment {

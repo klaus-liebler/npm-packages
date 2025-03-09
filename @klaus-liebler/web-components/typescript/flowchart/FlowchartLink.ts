@@ -8,7 +8,7 @@ export class FlowchartLink {
     private element: SVGPathElement;
     private captionElement:SVGTextElement;
     private captionPath: SVGTextPathElement;
-    constructor(private parent: Flowchart, private caption: string, private color: string, private from: FlowchartOutputConnector, private to: FlowchartInputConnector) {
+    constructor(private parent: Flowchart, caption: string, private color: string, private from: FlowchartOutputConnector, private to: FlowchartInputConnector) {
         this.index = FlowchartLink.MAX_INDEX++;
         this.element = <SVGPathElement>Svg(parent.LinkLayer, "path", ["stroke-width", "" + this.parent.Options.linkWidth, "fill", "none", "id", "LINK" + this.index]);
         this.RefreshPosition();

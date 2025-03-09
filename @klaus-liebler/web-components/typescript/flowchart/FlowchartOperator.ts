@@ -25,7 +25,7 @@ export class TypeInfo
         public Builder:(parent: Flowchart, caption: string, ti:TypeInfo, configurationData:KeyValueTuple[]|null)=>FlowchartOperator)
         {}
 }
-
+//FlowchartOperator ist die Basisklasse aller "Boxen", mit denen man ein Programm aufbaut
 export abstract class FlowchartOperator {
 
     //der Index der Inputs ist rein lokal und beginnt bei 0 fortlaufend
@@ -59,6 +59,9 @@ export abstract class FlowchartOperator {
     private y=0;
 
     protected box:SVGRectElement;
+    public static ResetMaxIndex(){
+        this.MAX_INDEX=0;
+    }
 
     public ShowAsSelected(state:boolean)
     {
@@ -110,6 +113,10 @@ export abstract class FlowchartOperator {
         this.configurationData.push({key:key, value:value});
     }
 
+    public ResetColorsAndCaptions(){
+        return;
+    }
+
     constructor(private parent: Flowchart, private caption: string, private typeInfo: TypeInfo, protected configurationData:KeyValueTuple[]|null) {
         this.index = FlowchartOperator.MAX_INDEX++;
         this.elementSvgG = <SVGGElement>Svg(parent.OperatorsLayer, "g", [], ["operator"]);
@@ -137,12 +144,15 @@ export abstract class FlowchartOperator {
             }
         };
         
-        if (this.parent.Options.canUserMoveOperators) {
-            dragGroup.onmousedown = (e) => {
+        
+        dragGroup.onmousedown = (e) => {
+            if (this.parent.UserMayMoveOperators()) {
                 this.RegisterDragging(e);
             }
         }
+        
     }
+    
     public RegisterDragging(e:MouseEvent)
     {
         let offsetX= e.clientX-this.x;

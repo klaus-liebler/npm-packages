@@ -18,7 +18,6 @@ export interface OperatorData {
 
 
 export interface LinkData {
-    color: string;
     fromOperatorIndex: number;
     fromOutput: number;
     toOperatorIndex: number;

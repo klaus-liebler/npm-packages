@@ -12,6 +12,7 @@ import { FilelistDialog, FilenameDialog, OkDialog } from "../dialog_controller";
 import { Namespace, RequestWrapper, RequestDebugData, RequestFbdRun, ResponseDebugData, ResponseFbdRun, Responses, ResponseWrapper, Requests } from "@generated/flatbuffers_ts/functionblock";
 import { Menu, MenuItem, MenuManager } from "./MenuManager";
 import { KeyValueTuple, Severity } from "@klaus-liebler/commons";
+import "../../style/flowchart.css"
 
 //see devicemanager.hh
 const FBDSTORE_BASE_DIRECTORY = "/spiffs/fbdstore/";    
@@ -21,7 +22,6 @@ const TEMPFBD_FBD_FILEPATH = "/spiffs/tempfbd.fbd";
 export class FlowchartOptions {
     canUserEditLinks: boolean = true;
     canUserMoveOperators: boolean = true;
-
     distanceFromArrow: number = 3;
     defaultOperatorClass: string = 'flowchart-default-operator';
     defaultLinkColor: string = '#3366ff';
@@ -59,6 +59,10 @@ enum FlowchartMode{
 }
 
 export class Flowchart {
+    UserMayMoveOperators() {
+        return this.mode==FlowchartMode.EDIT && this.options.canUserMoveOperators;
+    }
+    
     TriggerDebug() {
         if(this.mode!=FlowchartMode.DEBUG) return;
         var b = new flatbuffers.Builder(1024);
@@ -159,7 +163,7 @@ export class Flowchart {
                 continue;
             }
             linksToChange.forEach((e) => {
-                e.SetCaption("" + value);
+                e.SetCaption(`${value}`);
             });
         }
 
@@ -308,7 +312,6 @@ export class Flowchart {
         }
         for (const link of this.links.values()) {
             links.push({
-                color: "blue",
                 fromOperatorIndex: link.From.Parent.GlobalOperatorIndex,
                 fromOutput: link.From.LocalConnectorIndex,
                 toOperatorIndex: link.To.Parent.GlobalOperatorIndex,
@@ -411,8 +414,7 @@ export class Flowchart {
                 console.error(`Error loading file from ${path}: File has size 0`);
                 return;
             }
-            const the_json = new TextDecoder().decode(arrayBuffer);
-            this.setData(<FlowchartData>JSON.parse(the_json));
+            this.setData(this.parseFbdFile(arrayBuffer))
         } catch (error) {
             this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Failed to load file from ${path}`));
             console.error(`Error loading file from ${path}:`, error);
@@ -497,13 +499,19 @@ export class Flowchart {
                             b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestFbdRun, RequestFbdRun.createRequestFbdRun(b)));
                             this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
                             this.mode=FlowchartMode.DEBUG;
-                            this.currentDebugInfo
+                            this.flowchartContainerSvgSvg.classList.remove("edit", "simulate");
+                            this.flowchartContainerSvgSvg.classList.add("debug");
                         },
                         (p:string)=>{
                            console.error(`As file "${p}" could no be saved on labathome, the RequestFbdRun will not be sent to labathome`)
                         }
                     )),
-                    new MenuItem("× Stop Debug", ()=>this.mode=FlowchartMode.EDIT), 
+                    new MenuItem("× Stop Debug", ()=>{
+                        this.mode=FlowchartMode.EDIT;
+                        this.flowchartContainerSvgSvg.classList.remove("simulate", "debug");
+                        this.flowchartContainerSvgSvg.classList.add("edit");
+                        this.resetColorsAndCaptions();
+                    }), 
                     new MenuItem("👣 Set as Startup-App", ()=>this.postFbdFile(DEFAULTFBD_FBD_FILEPATH)), 
                 ]),
                 new Menu("Simulation",[
@@ -512,15 +520,25 @@ export class Flowchart {
                         this.simulationManager = new SimulationManager(compilerInstance.CompileForSimulation());
                         this.simulationManager.Start(false);
                         this.mode=FlowchartMode.SIMULATE;
+                        this.flowchartContainerSvgSvg.classList.remove("edit", "debug");
+                        this.flowchartContainerSvgSvg.classList.add("simulate");
                     }),
                     new MenuItem("× Stop Simulation",()=>{
                         this.simulationManager?.Stop();
                         this.mode=FlowchartMode.EDIT;
+                        this.resetColorsAndCaptions();
+                        this.flowchartContainerSvgSvg.classList.remove("simulate", "debug");
+                        this.flowchartContainerSvgSvg.classList.add("edit");
                     }) 
                 ])
             ]
         );
         mm.Render(subcontainer)
+    }
+    resetColorsAndCaptions() {
+        this.operators.forEach(o=>o.ResetColorsAndCaptions());
+        this.links.forEach(l=>l.SetCaption(""))
+        this.links.forEach(l=>l.UnsetColor())
     }
 
     public RenderUi(subcontainer: HTMLDivElement) {
@@ -533,7 +551,7 @@ export class Flowchart {
         let workspace = <HTMLDivElement>Html(subcontainer, "div", ["tabindex", "0"], ["develop-workspace"]);//tabindex, damit keypress-Events abgefangen werden können
         this.propertyGridHtmlDiv = <HTMLDivElement>Html(subcontainer, "div", [], ["develop-properties"]);
 
-        this.flowchartContainerSvgSvg = <SVGSVGElement>Svg(workspace, "svg", ["width", "100%", "height", "100%"], ["flowchart-container"]);
+        this.flowchartContainerSvgSvg = <SVGSVGElement>Svg(workspace, "svg", ["width", "100%", "height", "100%"], ["flowchart-container", "edit"]);
 
         this.linksLayer = <SVGGElement>Svg(this.flowchartContainerSvgSvg, "g", [], ["flowchart-links-layer"]);
         this.operatorsLayer = <SVGGElement>Svg(this.flowchartContainerSvgSvg, "g", [], ["flowchart-operators-layer", "unselectable"]);
@@ -628,6 +646,7 @@ export class Flowchart {
         this.links.clear();
         this.operators.forEach((e) => e.RemoveFromDOM());
         this.operators.clear();
+        FlowchartOperator.ResetMaxIndex();
         let indexInData2operator = new Map<number, FlowchartOperator>();
 
         for (const d of this.flowchartData!.operators) {
