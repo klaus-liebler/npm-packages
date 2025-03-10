@@ -12,6 +12,7 @@ import { IAppManagement, IScreenControllerHost, IWebsocketMessageListener } from
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
+import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 
 
 class Router2ContentAdapter implements IRouteHandler {
@@ -207,9 +208,10 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     if(this.activateChatbot){
       this.chatbot = new Chatbot();
     }
-
+    const bg=`<svg viewBox="0 0 1440 360" xmlns="http://www.w3.org/2000/svg"><path fill="#9EAFFD" opacity="0.3" d="M0 432 V216 Q432 43.2 864 216 V432z" /><path fill="#9EAFFD" opacity="0.7" d="M0 432 V172.8 Q432 244.8 792 172.8 T1440 158.4 V432z" /></svg>`
+    const svgDataUrl = `data:image/svg+xml;base64,${btoa(bg)}`;
     const Template = html`
-            <header>
+            <header style="background-image: url('${svgDataUrl}');">
               <span @click=${() => this.easteregg()}> ${this.appTitle} </span>
             </header>
             <nav>${this.menu.Template()}<a href="javascript:void(0);" @click=${() => this.menu.ToggleHamburgerMenu()}><i>≡</i></a></nav>
