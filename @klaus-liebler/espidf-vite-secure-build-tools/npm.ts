@@ -9,7 +9,7 @@ export function CreateAndInstallNpmProjectLazily(projectRoot:string, pj:IPackage
   const pjContent=JSON.stringify(pj);
   const pjPath=path.join(projectRoot, "package.json")
   var needToCallNpmInstall=false;
-  if(pj.dependencies && (!fs.existsSync(pjPath) || fs.readFileSync(pjPath).toString()!=pjContent)){
+  if(!fs.existsSync(pjPath) || fs.readFileSync(pjPath).toString()!=pjContent){
     writeFileCreateDirLazy(pjPath, pjContent);
     console.log(`Written new package.json file to ${projectRoot} because package.json ${fs.existsSync(pjPath)?"does not exist":"changed"} -->call npm i`);
     needToCallNpmInstall=true;

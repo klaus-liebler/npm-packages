@@ -10,5 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@klaus-liebler/commons": "file:../commons"
   }
 }
