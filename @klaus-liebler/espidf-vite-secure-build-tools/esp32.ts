@@ -376,15 +376,14 @@ export interface IPortInfo{
     vendorId:string;
 }
 
-export async function FindProbablePort():Promise<IPortInfo|null> {
-    const portInfo = await autoDetect().list() as Array<IPortInfo>;
-    for (var pi of portInfo) {
-        if(pi.productId!="1001" || pi.vendorId!="303A"){
-            continue;
-        }
-        return pi;
+export async function FindProbablePorts():Promise<Array<IPortInfo>> {
+    const allPorts = await autoDetect().list() as Array<IPortInfo>;
+    const filteredPorts= allPorts.filter(p=>validUsb.find(v=>v.productId==p.productId && v.vendorId==p.vendorId));
+    if (filteredPorts.length<1) {
+        throw Error("No connected Board found")
     }
-    return null;
+    return filteredPorts;
+    
 }
 
 class VendorProduct{
@@ -395,22 +394,15 @@ const validUsb=[
     new VendorProduct("1A86", "55D3"),
 ]
 export async function GetESP32Object(): Promise<ESP32Type|null> {
-    const portInfo = await autoDetect().list() as Array<IPortInfo>;
     let ret:ESP32Type|null;
-    for (var pi of portInfo) {
-        if(!validUsb.find(v=>{
-            const result=v.productId==pi.productId && v.vendorId==pi.vendorId
-            return result;
-        })){
-            continue;
-        }
-        
+    const filteredPorts = await FindProbablePorts()
+    for (var pi of filteredPorts) {
         console.log(`Checking Port '${pi.friendlyName}' (vid:${pi.vendorId}, pid:${pi.productId})`);
         ret=await GetESP32ObjectFromSpecificPort(pi.path)
         if(ret){
             return ret;
         }
     }
-    console.warn(`Non of the following USB ports are supposed to be a ESP32 programmer:\n ${JSON.stringify(portInfo)}`)
+    console.warn(`Non of the following USB ports are supposed to be a ESP32 programmer:\n ${JSON.stringify(filteredPorts)}`)
     return null;
 }

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { Context } from './context';
 import path from 'node:path';
 import { mac_12char } from './utils';
-import { FindProbablePort } from './esp32';
+import { FindProbablePorts } from './esp32';
 import * as os from "node:os"
 
 export enum EncryptionStrength {
@@ -35,19 +35,15 @@ export async function createRandomFlashEncryptionKeyLazily(c: Context, keySize: 
 }
 
 export async function burnFlashEncryptionKeyAndActivateEncryptedFlash(c: Context, keySize: EncryptionStrength) {
-  const p = new P.Paths(c);
   if (c.b.flash_encryption_key_burned_and_activated) {
     console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been burned to efuse and has been activated`);
     return;
   }
-  const pi = await FindProbablePort();
-  if (!pi) {
-    throw Error("No connected Board found")
-  }
+  const pi = await FindProbablePorts()[0];
   if (keySize == EncryptionStrength.AES128) {
-    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`, (l) => false);
+    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`, (l) => false);
   } else if (keySize == EncryptionStrength.AES256) {
-    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_256_KEY`, (l) => false);
+    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_256_KEY`, (l) => false);
   } else {
     throw Error(`KeySize ${keySize} not implemented`);
   }
@@ -140,32 +136,25 @@ export function nvs_partition_gen(c: Context, encrypt: boolean, filterStdOut: (l
 }
 
 export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, nvs_is_encrypted: boolean, write_storage: boolean) {
-  const p = new P.Paths(c);
-  const pi = await FindProbablePort();
-  if (!pi) {
-    throw Error("No connected Board found")
-  }
-
+  const pi = (await FindProbablePorts())[0];
   const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
 
-  sections.forEach(e => e.file = path.join(p.P_BUILD, e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
+  sections.forEach(e => e.file = path.join(c.p.P_BUILD, e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
   if (write_storage) {
-    c.f!.storage.file = path.join(p.P_BUILD, c.f!.storage.file)
+    c.f!.storage.file = path.join(c.p.P_BUILD, c.f!.storage.file)
     sections.push(c.f!.storage); //c.f!.storage is not encrypted!
   }
 
-
-  if (fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) {
+  if (fs.existsSync(path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) {
     const nvsPartitionInfo: IPartitionTableEntry = parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e) => e.Name == "nvs")!;
-
     if (!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
     //FOR FUTURE: add nvs-partition only if it exists, filename needs not to be changed, as it is created directly encrypted with correct filename
     //NOW: nvs-Partition is not encrypted
     if (write_nvs) {
       if (nvs_is_encrypted) {
-        sections.push({ encrypted: true, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
+        sections.push({ encrypted: true, file: path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_ENC_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
       } else {
-        sections.push({ encrypted: false, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
+        sections.push({ encrypted: false, file: path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
       }
     }
   }
@@ -176,28 +165,21 @@ export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, nvs
 }
 
 export async function flashFirmware(c: Context, write_nvs: boolean, write_storage: boolean) {
-  const p = new P.Paths(c);
-  const pi = await FindProbablePort();
-  if (!pi) {
-    throw Error("No connected Board found")
-  }
-
+  const pi = (await FindProbablePorts())[0];
   const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
   if (write_storage) {
     sections.push(c.f!.storage);
   }
-  sections.forEach(e => e.file = path.join(p.P_BUILD, e.file))//add path to filename
+  sections.forEach(e => e.file = path.join(c.p.P_BUILD, e.file))//add path to filename
   if (write_nvs) {
     const nvsPartitionInfo: IPartitionTableEntry = parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e) => e.Name == "nvs")!;
     if (!nvsPartitionInfo.Offset) throw new Error(`nvsPartitionInfo.Offset must be defined`)
-    if (!fs.existsSync(path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
-    sections.push({ encrypted: false, file: path.join(p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
+    if (!fs.existsSync(path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
+    sections.push({ encrypted: false, file: path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
   }
-
-  sections.forEach(s => {
-    const cmd = `--port ${pi.path} write_flash --flash_size keep ${s.offset} ${s.file}`;
-    esptool(cmd, (line) => line.startsWith("Wrote") || line.startsWith("Hash"))
-  })
+  var cmd = `--port ${pi.path} write_flash --flash_size keep`;
+  sections.forEach(s => {cmd += ` ${s.offset} ${s.file}`;})
+  esptool(cmd, (line) => line.startsWith("Wrote") || line.startsWith("Hash"))
   console.log('Flash (not encrypted) finished');
 }
 
