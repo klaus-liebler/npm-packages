@@ -4,10 +4,9 @@ import { ScreenController } from './screen_controller';
 import { Html, HtmlAsFirstChild } from '../utils/common';
 import { IAppManagement } from '../utils/interfaces';
 import { html } from 'lit-html';
-import { ByteBuffer } from 'flatbuffers';
+import  * as flatbuffers from 'flatbuffers';
 import { createRef, ref, Ref } from 'lit-html/directives/ref.js';
-import * as flatbuffers from 'flatbuffers';
-import { Mode, Namespace, RequestHeater, ResponseHeater } from "@generated/flatbuffers_ts/heaterexperiment";
+import { Mode, Namespace, RequestHeater, Requests, RequestWrapper, ResponseHeater, Responses, ResponseWrapper } from "@generated/flatbuffers_ts/heaterexperiment";
 
 
 export let DE_de = new Intl.NumberFormat('de-DE');
@@ -239,10 +238,17 @@ public OnFirstStart(): void {
     }
 
 
-    public OnMessage(namespace: number, bb: ByteBuffer): void {
-        if(namespace!=Namespace.Value) return;
-        let r = ResponseHeater.getRootAsResponseHeater(bb);
-
+    public OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
+        if(namespace!=Namespace.Value){
+            console.error(`heater experiment controller namespace problem: ${namespace}!=${Namespace.Value}`)
+            return;
+        }
+        let rw = ResponseWrapper.getRootAsResponseWrapper(bb)
+        if(rw.responseType()!=Responses.ResponseHeater){
+            console.error(`heater experiment controller: Unknown message type rw.responseType()`)
+            return
+        }
+        let r = <ResponseHeater>rw.response(new ResponseHeater());
               
         var now = new Date(Date.now());
 
@@ -328,16 +334,25 @@ public OnFirstStart(): void {
 
     private sendAndReceive() {
         let b = new flatbuffers.Builder(1024);
-        b.finish(RequestHeater.createRequestHeater(b, this.mode,
-            this.inputSetpointHeater.value!.valueAsNumber,
-            this.inputSetpointTemperature.value!.valueAsNumber,
-            this.mode==Mode.OpenLoop?this.inputFanOL.value!.valueAsNumber:this.inputFanCL.value!.valueAsNumber,
-            this.inputKP.value!.valueAsNumber,
-            this.inputTN.value!.valueAsNumber,
-            this.inputTV.value!.valueAsNumber,
-            this.inputWP.value!.valueAsNumber,
-            this.inputReset.value!.checked ? true : false
-         ))
+        b.finish(
+            RequestWrapper.createRequestWrapper(
+                b, 
+                Requests.RequestHeater, 
+                RequestHeater.createRequestHeater(
+                    b, 
+                    this.mode,
+                    this.inputSetpointHeater.value!.valueAsNumber,
+                    this.inputSetpointTemperature.value!.valueAsNumber,
+                    this.mode==Mode.OpenLoop?this.inputFanOL.value!.valueAsNumber:this.inputFanCL.value!.valueAsNumber,
+                    this.inputKP.value!.valueAsNumber,
+                    this.inputTN.value!.valueAsNumber,
+                    this.inputTV.value!.valueAsNumber,
+                    this.inputWP.value!.valueAsNumber,
+                    this.inputReset.value!.checked ? true : false
+                )
+            
+            )
+        )
         this.appManagement.SendFinishedBuilder(Namespace.Value, b, 0);
     }
                 
