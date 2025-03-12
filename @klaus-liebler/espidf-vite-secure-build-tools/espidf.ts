@@ -21,13 +21,8 @@ const NVS_PARTITION_GEN_TOOL = path.join(IDF_PATH, "components/nvs_flash/nvs_par
 export async function createRandomFlashEncryptionKeyLazily(c: Context, keySize: EncryptionStrength) {
   const path = c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME);
   if (fs.existsSync(path)) {
-    const sizeByte = fs.statSync(path).size;
-    if (sizeByte != keySize / 8) {
-      throw Error(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created, but with wrong size! (is:${sizeByte}Byte, shall:${keySize}/8 byte)`);
-    } else {
-      console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created with correct size ${sizeByte}byte.`);
-      return;
-    }
+    console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created.`);
+    return;
   }
   c.p.createBoardSpecificPathLazy(P.FLASH_KEY_SUBDIR);
   espsecure(`generate_flash_encryption_key --keylen ${keySize} ${path}`, (line) => true);
@@ -40,17 +35,21 @@ export async function burnFlashEncryptionKeyAndActivateEncryptedFlash(c: Context
     return;
   }
   const pi = await FindProbablePorts()[0];
+  const path=c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME);
+  const sizeByte = fs.statSync(path).size;
+  if (sizeByte != keySize / 8) {
+    throw Error(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been created, but with wrong size! (is:${sizeByte}Byte, shall:${keySize}/8 byte)`);
+  }
   if (keySize == EncryptionStrength.AES128) {
-    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_128_KEY`, (l) => false);
+    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${path} XTS_AES_128_KEY`, (l) => false);
   } else if (keySize == EncryptionStrength.AES256) {
-    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} XTS_AES_256_KEY`, (l) => false);
+    espefuse(`--port ${pi.path} --do-not-confirm burn_key BLOCK_KEY0 ${path} XTS_AES_256_KEY`, (l) => false);
   } else {
     throw Error(`KeySize ${keySize} not implemented`);
   }
   espefuse(`--port ${pi.path} --do-not-confirm burn_efuse SPI_BOOT_CRYPT_CNT 1`, (l) => false);
   console.log('Random Flash Encryption Key successfully burned to EFUSE; encryption of flash activated!');
   c.setFlashEncryptionKeyBurnedAndActivated();
-
 }
 
 interface IPartitionTableEntry {

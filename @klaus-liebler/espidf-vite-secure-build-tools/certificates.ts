@@ -22,7 +22,7 @@ function createRootCaExtensions() {
 
 
 
-function createUniversalAuthExtensions(dnsHostnames: Array<string>, authorityKeyIdentifier: string) {
+function createUniversalAuthExtensions(ipAddressAsString:string, dnsHostnames: Array<string>, authorityKeyIdentifier: string) {
 	var x= [
 		{
 			name: 'authorityKeyIdentifier',
@@ -53,7 +53,7 @@ function createUniversalAuthExtensions(dnsHostnames: Array<string>, authorityKey
 		name: 'subjectAltName',
 		altNames: [{
 				type: 7,  // 7 is IP type, see https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
-				ip: "192.168.4.1" //this is the address when the board is in AP mode, see https://github.com/digitalbazaar/forge/issues/714
+				ip: ipAddressAsString //this is the address when the board is in AP mode, see https://github.com/digitalbazaar/forge/issues/714
 			}
 		]
 	};
@@ -124,7 +124,7 @@ function certHelper(setPrivateKeyInCertificate: boolean, subject: forge.pki.Cert
 	cert.sign(signWith ?? keypair.privateKey, forge.md.sha256.create());
 	return { certificate: forge.pki.certificateToPem(cert), privateKey: forge.pki.privateKeyToPem(keypair.privateKey), };
 }
-export function CreateAndSignCertWithGivenPublicKey(publicKeyPemPath: fs.PathOrFileDescriptor, commonName:string, dnsHostname: string, certificateCaPemPath: fs.PathOrFileDescriptor, caPrivateKeyPemPath:fs.PathOrFileDescriptor) {
+export function CreateAndSignCertWithGivenPublicKey(publicKeyPemPath: fs.PathOrFileDescriptor, commonName:string, ipAddressAsString:string, dnsHostname: string, certificateCaPemPath: fs.PathOrFileDescriptor, caPrivateKeyPemPath:fs.PathOrFileDescriptor) {
 
 	let caCert = forge.pki.certificateFromPem(fs.readFileSync(certificateCaPemPath).toString());
 	let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync(caPrivateKeyPemPath).toString());
@@ -136,7 +136,7 @@ export function CreateAndSignCertWithGivenPublicKey(publicKeyPemPath: fs.PathOrF
 	cert.validity.notAfter = DateNDaysInFuture(3000);//8 Years
 	cert.setSubject(createSubject(commonName));
 	cert.setIssuer(caCert.subject.attributes); //issuer is the subject of the rootCA);
-	cert.setExtensions(createUniversalAuthExtensions([dnsHostname], caCert.serialNumber));
+	cert.setExtensions(createUniversalAuthExtensions(ipAddressAsString, [dnsHostname], caCert.serialNumber));
 	cert.sign(caPrivateKey, forge.md.sha256.create());
 	return forge.pki.certificateToPem(cert);
 }
@@ -151,14 +151,14 @@ export function CreateRootCA(commonName: string) {
 		null);//self sign
 }
 
-export function CreateAndSignCert(commonName:string, dnsHostnames: Array<string>, certificateCaPemPath: fs.PathOrFileDescriptor, privateKeyCaPemPath: fs.PathOrFileDescriptor) {
+export function CreateAndSignCert(commonName:string, ipAddressAsString:string, dnsHostnames: Array<string>, certificateCaPemPath: fs.PathOrFileDescriptor, privateKeyCaPemPath: fs.PathOrFileDescriptor) {
 	let caCert = forge.pki.certificateFromPem(fs.readFileSync(certificateCaPemPath).toString());
 	let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync(privateKeyCaPemPath).toString());
 	return certHelper(
 		false,
 		createSubject(commonName),
 		caCert.subject.attributes, //issuer is the subject of the rootCA
-		createUniversalAuthExtensions(dnsHostnames, caCert.serialNumber),
+		createUniversalAuthExtensions(ipAddressAsString, dnsHostnames, caCert.serialNumber),
 		caPrivateKey //sign with private key of rootCA
 	);
 }
@@ -170,7 +170,7 @@ export function CreateAndSignClientCert(username: string, certificateCaPemPath: 
 		false,
 		createSubject(username),
 		caCert.subject.attributes, //issuer is the subject of the rootCA
-		createUniversalAuthExtensions([username], caCert.serialNumber),
+		createUniversalAuthExtensions("192.168.4.1", [username], caCert.serialNumber),
 		caPrivateKey //sign with private key of rootCA
 	);
 }
