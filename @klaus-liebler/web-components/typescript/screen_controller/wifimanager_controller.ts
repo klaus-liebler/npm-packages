@@ -75,7 +75,7 @@ export class WifimanagerController extends ScreenController {
 </tr>
 <tr>
     <td>Signal Strength</td>
-    <td>${this.rssiSta}</td>
+    <td>${this.rssiSta}dB</td>
 </tr>
     `
     private apTable: Ref<HTMLTableSectionElement> = createRef();
@@ -129,7 +129,7 @@ export class WifimanagerController extends ScreenController {
 
     public onConnectToWifi(ssid: string): void {
         if (!ssid) return;
-        this.appManagement.ShowDialog(new PasswordDialog('Enter Password for Wifi', (ok: boolean, password: string) => {
+        this.appManagement.ShowDialog(new PasswordDialog(`Enter password for '${ssid}'`, (ok: boolean, password: string) => {
             if (ok) this.sendRequestWifiConnect(ssid, password)
         }))
     }

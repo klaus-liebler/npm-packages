@@ -28,6 +28,7 @@ export function writeFileCreateDirLazy(file: fs.PathOrFileDescriptor, data: stri
 }
 
 export function cleanNpmExcept_PackageJson_node_modules(targetDir:string){
+  if(!fs.existsSync(targetDir)) return;
   const dirItems=fs.readdirSync(targetDir);
   for(const item of dirItems){
     const fullPath = path.join(targetDir, item);
