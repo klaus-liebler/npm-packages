@@ -79,12 +79,9 @@ export class Paths{
       fs.mkdirSync(directory, { recursive: true });
     }
     
-    public writeBoardSpecificFileCreateDirLazy(subdir:string, filename:string, data: string | NodeJS.ArrayBufferView, callback?: fs.NoParamCallback) {
+    public writeBoardSpecificFileCreateDirLazy(subdir:string, filename:string, data: string | NodeJS.ArrayBufferView) {
       this.createBoardSpecificPathLazy(subdir)
-      if (callback) {
-        fs.writeFile(this.boardSpecificPath(subdir, filename), data, callback);
-      } else {
-        fs.writeFileSync(this.boardSpecificPath(subdir, filename), data);
-      }
+      fs.writeFileSync(this.boardSpecificPath(subdir, filename), data);
+      
     }
 }

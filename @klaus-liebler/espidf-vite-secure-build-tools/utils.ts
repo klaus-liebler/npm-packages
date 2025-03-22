@@ -18,13 +18,9 @@ export interface IBoardInfo{
   flash_encryption_key_burned_and_activated:boolean,
 }
 
-export function writeFileCreateDirLazy(file: fs.PathOrFileDescriptor, data: string | NodeJS.ArrayBufferView, callback?: fs.NoParamCallback) {
+export function writeFileCreateDirLazy(file: fs.PathOrFileDescriptor, data: string | NodeJS.ArrayBufferView) {
   fs.mkdirSync(path.dirname(file.toString()), { recursive: true });
-  if (callback) {
-    fs.writeFile(file, data, callback);
-  } else {
-    fs.writeFileSync(file, data);
-  }
+  fs.writeFileSync(file, data);
 }
 
 export function cleanNpmExcept_PackageJson_node_modules(targetDir:string){
