@@ -34,7 +34,7 @@ export async function burnFlashEncryptionKeyAndActivateEncryptedFlash(c: Context
     console.info(`flash_encryption key for board  ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)} has already been burned to efuse and has been activated`);
     return;
   }
-  const pi = await FindProbablePorts()[0];
+  const pi = (await FindProbablePorts())[0];
   const path=c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME);
   const sizeByte = fs.statSync(path).size;
   if (sizeByte != keySize / 8) {
