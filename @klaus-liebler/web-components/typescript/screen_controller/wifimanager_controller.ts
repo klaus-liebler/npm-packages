@@ -93,7 +93,7 @@ export class WifimanagerController extends ScreenController {
     `
     public Template = () => html`
 
-<h1>Current Wifi-Connection (as stored in flash, maybe not connected)</h1>
+<h1>Current Wifi-Connection</h1>
 <div class="buttons">
     <input type="button" value="Disconnect & Delete" @click=${() => { this.onBtnWifiDisconnect() }} />
     <input type="button" value="Show More Details" />
@@ -215,19 +215,20 @@ export class WifimanagerController extends ScreenController {
     }
 
     onResponseWifiConnect(r: ResponseWifiConnect) {
-        if (!r.success) {
-            console.info("Connection attempt failed!");
-            this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, "Connection attempt failed! "));
-            return;
-        }
+        this.isConnectedSta=r.success()!;
         this.ssidSta = r.ssid()!;
         this.ipSta = ip4_2_string(r.ip());
         this.netmaskSta = ip4_2_string(r.netmask());
         this.gatewaySta = ip4_2_string(r.gateway());
         this.rssiSta = r.rssi();
-        console.info(`Got connection! to ${this.ssidSta} with ip ${this.ipSta}`);
         render(this.wifiTableTemplate(), this.wifiTable.value!)
-        this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Connection to ${r.ssid()} was successful. `));
+        if (!r.success()) {
+            console.info("Connection attempt failed!");
+            this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, "Connection attempt failed! "));
+        }else{
+            console.info(`Got connection! to ${this.ssidSta} with ip ${this.ipSta} netmask ${this.netmaskSta} gateway ${this.gatewaySta}`);
+            this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Connection to ${r.ssid()} was successful. `));
+        }
     }
 
     OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {

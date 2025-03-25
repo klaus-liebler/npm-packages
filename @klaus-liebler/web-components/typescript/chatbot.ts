@@ -1,7 +1,7 @@
 import { html } from "lit-html";
-import { GOOGLE_API_KEY } from "./secrets";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GenerativeModel, GoogleGenerativeAI } from "@google/generative-ai";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
+import { IsNotNullOrEmpty } from "@klaus-liebler/commons";
 
 const SYSTEM_INSTRUCTION = `
 Du bist ein virtueller Assistent in der Web-Oberfläche des Experimentiersystems "Lab@Home". Dein Name ist Labby. Das Experimentiersystem "Lab@Home" ist eine mechatronische Baugruppe, die primär über die Weboberfläche bedient werden kann und die verschiedene Experimente aus der Automatisierungstechnik ermöglicht.
@@ -23,13 +23,13 @@ export class Chatbot {
   private chatInput:Ref<HTMLTextAreaElement>=createRef();//document.querySelector("#chatbot>footer>textarea");
   private chatbox:Ref<HTMLUListElement>=createRef();//document.querySelector("#chatbot>ul");
   private inputInitHeight = 0;
-  private genAI:any;
-  private model:any;
+ 
+  private model:GenerativeModel|null=null;
 
-  public constructor(){
-    if(GOOGLE_API_KEY !== undefined){
-      this.genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_INSTRUCTION });
+  public constructor(google_api_key:string){
+    if(IsNotNullOrEmpty(google_api_key)){
+      const genAI = new GoogleGenerativeAI(google_api_key);
+      this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_INSTRUCTION });
     }
   }
   public Template = () => html`
@@ -78,7 +78,7 @@ export class Chatbot {
     return chatLi; // return chat <li> element
   }
   private async generateResponse(chatElement:Element, prompt: string) {
-    if(GOOGLE_API_KEY === undefined){
+    if(this.model == null){
       return;
     }
     const messageElement = chatElement.querySelector("p")!;

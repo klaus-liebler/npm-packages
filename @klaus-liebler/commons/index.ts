@@ -35,6 +35,10 @@ Map.prototype.getOrAdd = function <K, V>(this: Map<K, V>, key: K, valueFactory: 
     }
     return s;
   }
+
+  export function IsNotNullOrEmpty(str: string | null | undefined): boolean {
+    return !!str && str.trim().length > 0;
+  }
   
   export function numberArray2HexString(d: Array<number>) {
     var s = "";

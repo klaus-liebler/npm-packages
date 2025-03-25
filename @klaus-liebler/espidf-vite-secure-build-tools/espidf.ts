@@ -113,9 +113,8 @@ export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c:
 }
 
 export function nvs_partition_gen(c: Context, encrypt: boolean, filterStdOut: (line: string) => boolean): Section {
-  const p = new P.Paths(c);
   const nvsPartitionInfo: IPartitionTableEntry = parsePartitionsCSVFromFile(path.join(c.c.idfProjectDirectory, "partitions.csv")).find((e) => e.Name == "nvs")!;
-
+  const p=c.p;
   if (nvsPartitionInfo.Size % 4096 != 0) {
     throw new Error(`size_of_nvs_partition_kibibytes must be a multiple of 4096`)
   }

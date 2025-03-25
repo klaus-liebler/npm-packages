@@ -1,5 +1,5 @@
 import "../style/app.css"
-import { TemplateResult, html, render, svg } from "lit-html";
+import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import * as flatbuffers from "flatbuffers";
 import { Chatbot } from "./chatbot";
@@ -7,12 +7,11 @@ import { DialogController, OkDialog } from "./dialog_controller";
 import { runCarRace } from "./screen_controller/racinggame_controller";
 import { DefaultScreenController, ScreenController } from "./screen_controller/screen_controller";
 import { Html} from "./utils/common";
-import { MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol, svgString2dataUrlBase64 } from "@klaus-liebler/commons";
+import { IsNotNullOrEmpty, MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol} from "@klaus-liebler/commons";
 import { IAppManagement, IScreenControllerHost, IWebsocketMessageListener } from "./utils/interfaces";
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
-import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 
 
 class Router2ContentAdapter implements IRouteHandler {
@@ -199,15 +198,13 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   constructor(
     private readonly appTitle:string, 
     private readonly websocketUrl:string, 
-    private readonly activateChatbot=false, 
+    private readonly google_api_key_for_chatbot_or_null_to_deactivate:string|null=null, 
     private readonly activateEastereggs=false, 
     private readonly additionalFooter:string=""){}
 
   
   public Startup() {
-    if(this.activateChatbot){
-      this.chatbot = new Chatbot();
-    }
+    this.chatbot = new Chatbot(this.google_api_key_for_chatbot_or_null_to_deactivate);
     const bg=`<svg viewBox="0 0 1440 360" xmlns="http://www.w3.org/2000/svg"><path fill="#9EAFFD" opacity="0.3" d="M0 432 V216 Q432 43.2 864 216 V432z" /><path fill="#9EAFFD" opacity="0.7" d="M0 432 V172.8 Q432 244.8 792 172.8 T1440 158.4 V432z" /></svg>`
     const svgDataUrl = `data:image/svg+xml;base64,${btoa(bg)}`;
     const Template = html`
@@ -220,7 +217,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
             <div ${ref(this.modalSpinner)} class="modal"><span class="loader"></span></div>
             <div id="snackbar">Some text some message..</div>
             <div ${ref(this.dialog)}></div>
-            ${this.activateChatbot?this.chatbot.Template():""}`
+            ${IsNotNullOrEmpty(this.google_api_key_for_chatbot_or_null_to_deactivate)?this.chatbot.Template():""}`
     render(Template, document.body);
     console.log(`Connecting to ${this.websocketUrl}`)
     this.socket = new WebSocket(this.websocketUrl)
