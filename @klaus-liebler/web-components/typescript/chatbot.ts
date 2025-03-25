@@ -23,9 +23,15 @@ export class Chatbot {
   private chatInput:Ref<HTMLTextAreaElement>=createRef();//document.querySelector("#chatbot>footer>textarea");
   private chatbox:Ref<HTMLUListElement>=createRef();//document.querySelector("#chatbot>ul");
   private inputInitHeight = 0;
-  private genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-  private model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_INSTRUCTION });
+  private genAI:any;
+  private model:any;
 
+  public constructor(){
+    if(GOOGLE_API_KEY !== undefined){
+      this.genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_INSTRUCTION });
+    }
+  }
   public Template = () => html`
   <button class="chatbot-toggler" ${ref(this.chatbotToggler)} @click=${() => {document.body.classList.toggle("show-chatbot")}}><span>🤖</span><span>⟱</span></button>
   <div class="chatbot">
@@ -72,6 +78,9 @@ export class Chatbot {
     return chatLi; // return chat <li> element
   }
   private async generateResponse(chatElement:Element, prompt: string) {
+    if(GOOGLE_API_KEY === undefined){
+      return;
+    }
     const messageElement = chatElement.querySelector("p")!;
     // Define the properties and message for the API request
 
