@@ -77,10 +77,12 @@ class ConfigGroupRT{
         this.btnOpenClose.value!.classList.toggle("active");
         if (this.panelOpen) {
             this.divPanel.value!.style.display = "block";
+            this.btnOpenClose.value!.classList.add("active");
             this.spanArrowContainer.value!.textContent="▼";
             this.sendRequestGetUserSettings();
         } else {
             this.divPanel.value!.style.display = "none";
+            this.btnOpenClose.value!.classList.remove("active");
             this.spanArrowContainer.value!.textContent="▶";
         }
         e.stopPropagation();

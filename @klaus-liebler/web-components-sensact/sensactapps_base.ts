@@ -1,5 +1,5 @@
 
-import { TemplateResult, html } from 'lit-html';
+import { TemplateResult, html, render } from 'lit-html';
 import * as flatbuffers from 'flatbuffers';
 import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
 import  * as fb from "@generated/flatbuffers_ts/sensact";
@@ -7,6 +7,8 @@ import { interfaces } from '@klaus-liebler/web-components';
 import { styleMap } from 'lit-html/directives/style-map.js';
 import * as cmd from "@generated/sensact_sendCommandImplementation/sendCommandImplementation"
 import { ISensactContext } from '@klaus-liebler/sensact-base/interfaces';
+import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
+import lightbulb from '@klaus-liebler/svgs/solid/lightbulb.svg?raw';
 
 export enum SyncState {
   NODATA,
@@ -46,16 +48,15 @@ export class ApplicationGroup {
     const divPanelStyle = { display: this.panelOpen ? 'block' : 'none'};
     return html`
     <div class="accordion appgroup">
-        <button ${ref(this.btnOpenClose)} @click=${(e) => this.onBtnOpenCloseClicked(e)}>
-            <span ${ref(this.spanArrowContainer)}>▶</span>
+        <button ${ref(this.btnOpenClose)} @click=${(e:MouseEvent) => this.onBtnOpenCloseClicked(e)}>
+            <span ${ref(this.spanArrowContainer)} style="height: 100%;">▶</span>
             <span style="flex-grow: 1; text-align:left; padding-left:10px;">${this.DisplayName}</span>
             <input ${ref(this.btnUpdate)} @click=${(e: MouseEvent) => this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
-            <input ${ref(this.btnReset)} type="button" value=" 🗑 Reset Values" />
         </button>
         <div ${ref(this.divPanel)} style=${styleMap(divPanelStyle)}>
             <table>
                 <thead>
-                    <tr><th>Name</th><th>ID</th><th>Controls</th></tr>
+                    <tr><th style="width:200px">Name</th><th style="width:200px">ID</th><th>Controls</th></tr>
                 </thead>
                 <tbody>${itemTemplates}</tbody>
             </table>
@@ -67,7 +68,7 @@ export class ApplicationGroup {
   private sendRequestGetApplicationStatus() {
     let b = new flatbuffers.Builder(1024);
 
-    console.info(`sendRequestGetApplicationStatus`);
+    console.info(`sendRequestGetApplicationStatus for ids ${this.Apps.map(v=>v.applicationId).join(",")}`);
             
     var ids=new Array<fb.ApplicationId>();
     this.Apps.forEach((v,k) => {
@@ -91,6 +92,10 @@ export class ApplicationGroup {
       this.divPanel.value!.style.display = "block";
       this.btnOpenClose.value!.classList.add("active");
       this.spanArrowContainer.value!.textContent = "▼";
+      //invalidate the current state of the application
+      this.Apps.forEach((v,k) => {
+        v.NoDataFromServerAvailable();
+      });
       this.sendRequestGetApplicationStatus();
     } else {
       this.divPanel.value!.style.display = "none";
@@ -122,11 +127,11 @@ export abstract class SensactApplication {
   <tr class="app">
       <td>${this.ApplicationDescription}</td>
       <td>${fb.ApplicationId[this.applicationId]}${this.syncState==SyncState.SYNCHRONIZED?"(sync)":"(no sync)"}</td>
-      <td>${this.CoreAppHtmlTemplate()}</td>
+      <td style="display:flex;">${this.CoreAppHtmlTemplate()}</td>
   </tr>
   `
 
-  protected NoDataFromServerAvailable() {
+  public NoDataFromServerAvailable() {
     this.syncState=SyncState.NODATA;
   }
 
@@ -224,24 +229,31 @@ export class BlindApplication extends SensactApplication {
 
 
 export class SinglePwmApplication extends SensactApplication {
-  private onOffElement: Ref<HTMLInputElement> = createRef()
   private sliderElement: Ref<HTMLInputElement> = createRef()
+  private inputElement: Ref<HTMLButtonElement> = createRef()
+  private on:boolean=false;
+  private level:number=-1;
   
-  private oninput() {
-    if (this.onOffElement.value!.checked) {
-      cmd.SendONCommand(this.applicationId, 0, this.ctx);
-    } else {
-      cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
-    }
-    console.log(`SinglePwmApplication ${this.applicationId} ${this.onOffElement.value!.checked}`);
+  private oninput(e:MouseEvent) {
+    const _b = e.currentTarget as HTMLButtonElement;
+    cmd.SendTOGGLECommand(this.applicationId, this.ctx);
+    console.log(`SinglePwmApplication ${this.applicationId} got TOGGLEd`);
   }
+  /*
+	eAppCallResult cSinglePWM::FillStatus(iSensactContext &ctx, std::array<uint16_t, 4>& buf){
+			buf[0]=currentLevel==0?0:1; // 1=ON, 0=OFF
+			buf[1]=currentLevel;
+			buf[2]=autoDim;
+			buf[3]=targetLevel;;
+			return eAppCallResult::OK;
+		}
+  */
 
   public UpdateState(state:Uint16Array){
+    console.info(`SinglePwmApplication::UpdateState ${this.applicationId} ${state[0]==0?"OFF":"ON"}, PWM: ${state[1]}`);
     this.ConfirmSuccessfulWrite();
-    var targetLevel:number = state[3];
-    if(targetLevel!=this.sliderElement.value!.valueAsNumber){
-      this.sliderElement.value!.valueAsNumber=targetLevel;
-    }
+    if(this.level=-1) this.level=state[1];//only do this once to avoid flickering
+    this.on=state[0]!=0;
   }
 
   private onslide() {
@@ -249,7 +261,7 @@ export class SinglePwmApplication extends SensactApplication {
     console.log(`singlepwm_slider ${this.applicationId} ${this.sliderElement.value!.valueAsNumber}`);
   }
   protected CoreAppHtmlTemplate = () => html`
-  <input ${ref(this.onOffElement)} @input=${() => this.oninput()} class="toggle" type="checkbox"></input>
-  <input ${ref(this.sliderElement)} @input=${() => this.onslide()} type="range" min="1" max="100" value="50">
+  <button ${ref(this.inputElement)} class="withsvg toggle-button ${this.on?'active':''}" style="fill:yellow;" @click=${(e:MouseEvent) => this.oninput(e)}>${unsafeSVG(lightbulb)}<span>On Off<span></button>
+  <input ${ref(this.sliderElement)} @input=${() => this.onslide()} type="range" min="0" max="65535" value="${this.level}">
   `
 }

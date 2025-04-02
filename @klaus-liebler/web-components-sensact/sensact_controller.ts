@@ -20,15 +20,12 @@ export class SensactController extends ScreenController implements ISensactConte
     
     public SendCommandMessage(id: ApplicationId, cmd: Command, payload: DataView) {
         let b = new flatbuffers.Builder(1024);
-        var payload_as_numbers_array=new Array<number>();
-        for(var i=0;i<payload.byteLength;i++){
-            payload_as_numbers_array.push(payload.getUint8(i))
-        }
-        const dataOffset = Payload.createPayload(b, payload_as_numbers_array, payload.byteLength);
+        const payloadArray = Array.from(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength));
+        
         RequestCommand.startRequestCommand(b)
         RequestCommand.addId(b, id);
         RequestCommand.addCmd(b, cmd);
-        RequestCommand.addPayload(b, dataOffset);
+        RequestCommand.addPayload(b, Payload.createPayload(b, payloadArray, payloadArray.length));
         const offset = RequestCommand.endRequestCommand(b);
 
         b.finish(
@@ -38,11 +35,11 @@ export class SensactController extends ScreenController implements ISensactConte
                 offset
             )
         )
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 0);
     }
 
     private groups: Array<ApplicationGroup>;
-    private filterLocal:boolean;
+    private filterLocal:boolean=true;
 
     private btnSortTechnology() {
         var tech2apps = new Map<string, Array<SensactApplication>>();
@@ -99,7 +96,7 @@ export class SensactController extends ScreenController implements ISensactConte
     <div class="buttons">
         <button class="withsvg" @click=${() => this.btnSortRooms()}>${unsafeSVG(bed)}<span>Sort Rooms<span></button>
         <button class="withsvg" @click=${() => this.btnSortTechnology()}>${unsafeSVG(lightbulb)}<span>Sort Tech<span></button>
-        <button class="withsvg toggle-button" @click=${(e:MouseEvent) => this.btnOnlyLocalApps(e)}>${unsafeSVG(arrows_to_circle)}<span>Only Local Apps<span></button>
+        <button class="withsvg toggle-button active" @click=${(e:MouseEvent) => this.btnOnlyLocalApps(e)}>${unsafeSVG(arrows_to_circle)}<span>Only Local Apps<span></button>
     </div>
     <section ${ref(this.mainElement)}></section>`;
 
@@ -112,7 +109,7 @@ export class SensactController extends ScreenController implements ISensactConte
             case Responses.ResponseCommand:
                 this.onResponseCommand(<ResponseCommand>messageWrapper.response(new ResponseCommand()));
                 break;
-            case Responses.NotifyStatus:
+            case Responses.NotifyStatus: 
                 this.onNotifyStatus(<NotifyStatus>messageWrapper.response(new NotifyStatus()));
                 break;
             case Responses.ResponseStatus:
@@ -129,25 +126,35 @@ export class SensactController extends ScreenController implements ISensactConte
     }
 
     private onNotifyStatus(m: NotifyStatus) {
+        console.info("onNotifyStatus");
         var appc = this.id2appContainer.get(m.id());
         if (!appc) {
             console.warn(`Unknown app with id ${m.id()}`);
             return;
         }
-        const arr = new Uint16Array([m.status().data(0),m.status().data(1),m.status().data(2),m.status().data(3), ])
+        const arr = new Uint16Array([
+            m.status()!.data(0) ?? 0,
+            m.status()!.data(1) ?? 0,
+            m.status()!.data(2) ?? 0,
+            m.status()!.data(3) ?? 0,
+        ]);
         appc.app.UpdateState(arr);
+        this.execTemplates();
     }
 
+
     private onResponseStatus(m: ResponseStatus) {
+        console.info(`onResponseStatus for ${m.statesLength()} items`);
         for (var i = 0; i < m.statesLength(); i++) {
             var appc = this.id2appContainer.get(m.states(i)!.id());
             if (!appc) {
                 console.warn(`Unknown app with id ${m.states(i)!.id()}`);
                 continue;
             }
-            const arr = new Uint16Array([m.states(i).status().data(0),m.states(i).status().data(1),m.states(i).status().data(2),m.states(i).status().data(3), ])
+            const arr = new Uint16Array([m.states(i)!.status()!.data(0)??0,m.states(i)!.status()!.data(1)??0,m.states(i)!.status()!.data(2)??0,m.states(i)!.status()!.data(3)??0, ])
             appc.app.UpdateState(arr);
         }
+        this.execTemplates();
     }
 
     public constructor(appManagement: IAppManagement){

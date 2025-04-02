@@ -339,12 +339,18 @@ button.withsvg {
   >svg{
     height: 24px;
     width: 24px;
+    path{
+      fill: #000;
+    }
   }
 }
 button.toggle-button.active{
   background-color: #007bff;
   color: #fff;
   border-color: #007bff;
+  >svg path{
+    fill: #e4f70f;
+  }
 }
 
 div.accordion {
