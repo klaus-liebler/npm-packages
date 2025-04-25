@@ -42,6 +42,13 @@ export default class RouterMenu implements IHtmlRenderer {
       this.list.value!.style.display = "block";
     }
   }
+
+  public ShowHamburgerMenuIfLargeScreen(){
+    if(window.getComputedStyle(document.body).display=="grid")
+      this.list.value!.style.display = "block";
+    else
+      this.list.value!.style.display = "none";
+  }
   
   public check() {
     var fragment = decodeURI(globalThis.location.pathname)

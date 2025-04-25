@@ -104,7 +104,7 @@ export class SensactController extends ScreenController implements ISensactConte
 
     OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
         if (namespace != Namespace.Value) return;
-        if(this.State != ControllerState.STARTED) return; //because only when started we are interested in messages
+        
         var messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
         switch (messageWrapper.responseType()) {
             case Responses.ResponseCommand:
@@ -119,7 +119,9 @@ export class SensactController extends ScreenController implements ISensactConte
             default:
                 break;
         }
-        this.execTemplates();
+        if(this.State == ControllerState.STARTED){
+            this.execTemplates();
+        }
     }
 
     private onResponseCommand(m: ResponseCommand) {

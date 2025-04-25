@@ -219,6 +219,9 @@ export class AppController implements IAppManagement, IScreenControllerHost {
             <div ${ref(this.dialog)}></div>
             ${IsNotNullOrEmpty(this.google_api_key_for_chatbot_or_null_to_deactivate)?this.chatbot.Template():""}`
     render(Template, document.body);
+    window.onresize=()=>{
+      this.menu.ShowHamburgerMenuIfLargeScreen()
+    };
     console.log(`Connecting to ${this.websocketUrl}`)
     this.setModal(true);
     this.socket = new WebSocket(this.websocketUrl)
