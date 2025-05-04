@@ -1,8 +1,7 @@
-
 import { TemplateResult, html, render } from 'lit-html';
 import * as flatbuffers from 'flatbuffers';
 import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
-import  * as fb from "@generated/flatbuffers_ts/sensact";
+import * as fb from "@generated/flatbuffers_ts/sensact";
 import { interfaces } from '@klaus-liebler/web-components';
 import { styleMap } from 'lit-html/directives/style-map.js';
 import * as cmd from "@generated/sensact_sendCommandImplementation/sendCommandImplementation"
@@ -20,9 +19,9 @@ export interface SensactContext {
 
 };
 
-export interface SensactApplicationAndLocalFlag{
-  local:boolean;
-  app:SensactApplication;
+export interface SensactApplicationAndLocalFlag {
+  local: boolean;
+  app: SensactApplication;
 }
 
 export class ApplicationGroup {
@@ -45,10 +44,10 @@ export class ApplicationGroup {
     for (const app of this.Apps) {
       itemTemplates.push(app.OverallTemplate());
     }
-    const divPanelStyle = { display: this.panelOpen ? 'block' : 'none'};
+    const divPanelStyle = { display: this.panelOpen ? 'block' : 'none' };
     return html`
     <div class="accordion appgroup">
-        <button ${ref(this.btnOpenClose)} @click=${(e:MouseEvent) => this.onBtnOpenCloseClicked(e)}>
+        <button ${ref(this.btnOpenClose)} @click=${(e: MouseEvent) => this.onBtnOpenCloseClicked(e)}>
             <span ${ref(this.spanArrowContainer)} style="height: 100%;">▶</span>
             <span style="flex-grow: 1; text-align:left; padding-left:10px;">${this.DisplayName}</span>
             <input ${ref(this.btnUpdate)} @click=${(e: MouseEvent) => this.onBtnUpdateClicked(e)} type="button" value=" ⟳ Fetch Values from Server" />
@@ -68,19 +67,19 @@ export class ApplicationGroup {
   private sendRequestGetApplicationStatus() {
     let b = new flatbuffers.Builder(1024);
 
-    console.info(`sendRequestGetApplicationStatus for ids ${this.Apps.map(v=>v.applicationId).join(",")}`);
-            
-    var ids=new Array<fb.ApplicationId>();
-    this.Apps.forEach((v,k) => {
-        ids.push(v.applicationId)
+    console.info(`sendRequestGetApplicationStatus for ids ${this.Apps.map(v => v.applicationId).join(",")}`);
+
+    var ids = new Array<fb.ApplicationId>();
+    this.Apps.forEach((v, k) => {
+      ids.push(v.applicationId)
     });
     b.finish(
       fb.RequestWrapper.createRequestWrapper(
-        b, 
-        fb.Requests.RequestStatus, 
+        b,
+        fb.Requests.RequestStatus,
         fb.RequestStatus.createRequestStatus(b, fb.RequestStatus.createIdsVector(b, ids))
       )
-    )    
+    )
     this.appManagement.SendFinishedBuilder(fb.Namespace.Value, b, 3000);
   }
 
@@ -93,7 +92,7 @@ export class ApplicationGroup {
       this.btnOpenClose.value!.classList.add("active");
       this.spanArrowContainer.value!.textContent = "▼";
       //invalidate the current state of the application
-      this.Apps.forEach((v,k) => {
+      this.Apps.forEach((v, k) => {
         v.NoDataFromServerAvailable();
       });
       this.sendRequestGetApplicationStatus();
@@ -116,37 +115,37 @@ export abstract class SensactApplication {
 
   protected syncState: SyncState = SyncState.NODATA;
 
-  public abstract UpdateState(state:Uint16Array);
+  public abstract UpdateState(state: Uint16Array);
 
-  constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx:ISensactContext) { }
-  
+  constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx: ISensactContext) { }
+
 
   protected abstract CoreAppHtmlTemplate: () => TemplateResult<1>;
 
   public OverallTemplate = () => html`
   <tr class="app">
       <td>${this.ApplicationDescription}</td>
-      <td>${fb.ApplicationId[this.applicationId]}${this.syncState==SyncState.SYNCHRONIZED?"(sync)":"(no sync)"}</td>
+      <td>${fb.ApplicationId[this.applicationId]}${this.syncState == SyncState.SYNCHRONIZED ? "(sync)" : "(no sync)"}</td>
       <td style="display:flex;align-items:center">${this.CoreAppHtmlTemplate()}</td>
   </tr>
   `
 
   public NoDataFromServerAvailable() {
-    this.syncState=SyncState.NODATA;
+    this.syncState = SyncState.NODATA;
   }
 
   protected ConfirmSuccessfulWrite() {
-    this.syncState=SyncState.SYNCHRONIZED;
+    this.syncState = SyncState.SYNCHRONIZED;
   }
 }
 
 export class OnOffApplication extends SensactApplication {
   private inputElement: Ref<HTMLInputElement> = createRef()
-  
-  public UpdateState(state:Uint16Array){
+
+  public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    if(this.inputElement.value){
-      this.inputElement.value!.checked=state[0]!=0;
+    if (this.inputElement.value) {
+      this.inputElement.value!.checked = state[0] != 0;
     }
   }
 
@@ -174,14 +173,14 @@ Wenn diese Zeiten dann individuell erreicht werden, wird der passende Befehl an 
 */
 export class BlindsTimerApplication extends SensactApplication {
   private inputElement: Ref<HTMLInputElement> = createRef()
-  
+
   protected CoreAppHtmlTemplate = () => html`
        <input ${ref(this.inputElement)} @input=${() => this.oninput()} type="checkbox"></input>
   `
 
-  public UpdateState(state:Uint16Array){
+  public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.inputElement.value!.checked=state[0]!=0;
+    this.inputElement.value!.checked = state[0] != 0;
   }
 
   private oninput() {
@@ -195,22 +194,22 @@ export class BlindsTimerApplication extends SensactApplication {
   }
 }
 
-enum  eCurrentBlindState //copied from c++ code
+enum eCurrentBlindState //copied from c++ code
 
-		{
-			ENERGY_SAVE,
-			STOP,
-			PREPARE_UP,
-			PREPARE_DOWN,
-			UP,
-			DOWN,
-		};
+{
+  ENERGY_SAVE,
+  STOP,
+  PREPARE_UP,
+  PREPARE_DOWN,
+  UP,
+  DOWN,
+};
 
-    //constexpr s32 FULL_DOWN = 0.25 * INT32_MAX;
-		//constexpr s32 FULL_UP = 0.75 * INT32_MAX;
+//constexpr s32 FULL_DOWN = 0.25 * INT32_MAX;
+//constexpr s32 FULL_UP = 0.75 * INT32_MAX;
 
-    //unten=0%
-    //oben=100%
+//unten=0%
+//oben=100%
 export class BlindApplication extends SensactApplication {
   private upElement: Ref<HTMLInputElement> = createRef()
   private stopElement: Ref<HTMLInputElement> = createRef()
@@ -219,10 +218,10 @@ export class BlindApplication extends SensactApplication {
   private movement: eCurrentBlindState = eCurrentBlindState.STOP;
   private positionAsPercentage: number = 0;
 
-  public UpdateState(state:Uint16Array){
+  public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.movement=<eCurrentBlindState>state[0];
-    this.positionAsPercentage=state[1];
+    this.movement = <eCurrentBlindState>state[0];
+    this.positionAsPercentage = state[1];
     console.log(`${fb.ApplicationId[this.applicationId]} recvs  ${eCurrentBlindState[state[0]]}, POS%: ${this.positionAsPercentage}%`);
   }
 
@@ -242,60 +241,59 @@ export class BlindApplication extends SensactApplication {
   }
 
   protected CoreAppHtmlTemplate = () => html`
-  <button ${ref(this.upElement)} @click=${() => this.onUp()} class="${this.movement==eCurrentBlindState.UP?'active':''}">▲</button>
+  <button ${ref(this.upElement)} @click=${() => this.onUp()} class="${this.movement == eCurrentBlindState.UP ? 'active' : ''}">▲</button>
   <button ${ref(this.stopElement)} @click=${() => this.onStop()}>▮</button>
-  <button ${ref(this.downElement)} @click=${() => this.onDown()} class="${this.movement==eCurrentBlindState.DOWN?'active':''}">▼</button>
-  <span style="margin-left:10px">oben</span><progress style="margin-left:10px" ${ref(this.progressElement)} max="100" value="${100-this.positionAsPercentage}"></progress><span style="margin-left:10px">unten</span>
-  <span style="margin-left:10px">${100-this.positionAsPercentage}%</span>
+  <button ${ref(this.downElement)} @click=${() => this.onDown()} class="${this.movement == eCurrentBlindState.DOWN ? 'active' : ''}">▼</button>
+  <span style="margin-left:10px">oben</span><progress style="margin-left:10px" ${ref(this.progressElement)} max="100" value="${100 - this.positionAsPercentage}"></progress><span style="margin-left:10px">unten</span>
+  <span style="margin-left:10px">${100 - this.positionAsPercentage}%</span>
 
   `
 }
 
-
 export class SinglePwmApplication extends SensactApplication {
+  private MULTIPLIER = 256;
   private sliderElement: Ref<HTMLInputElement> = createRef()
   private inputElement: Ref<HTMLButtonElement> = createRef()
-  private on:boolean=false;
-  private level:number=-1;
-  private lastUserInteraction:number=0;
-  
-  private oninput(e:MouseEvent) {
+  private on: boolean = false;
+  private level: number = -1;
+  private lastUserInteraction: number = 0;
+
+  private oninput(e: MouseEvent) {
     const _b = e.currentTarget as HTMLButtonElement;
     cmd.SendTOGGLECommand(this.applicationId, this.ctx);
     console.log(`${fb.ApplicationId[this.applicationId]} got TOGGLEd`);
   }
   /*
-	eAppCallResult cSinglePWM::FillStatus(iSensactContext &ctx, std::array<uint16_t, 4>& buf){
-			buf[0]=currentLevel==0?0:1; // 1=ON, 0=OFF
-			buf[1]=currentLevel;
-			buf[2]=autoDim;
-			buf[3]=targetLevel;;
-			return eAppCallResult::OK;
-		}
+  eAppCallResult cSinglePWM::FillStatus(iSensactContext &ctx, std::array<uint16_t, 4>& buf){
+      buf[0]=currentLevel==0?0:1; // 1=ON, 0=OFF
+      buf[1]=currentLevel;
+      buf[2]=autoDim;
+      buf[3]=targetLevel;;
+      return eAppCallResult::OK;
+    }
   */
 
-  public UpdateState(state:Uint16Array){
-   
+  public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.level=state[1]; //das ist das storedLevel, das repräsentiert die Stellung des Sliders wohl am besten
-    this.on=state[0]!=0; //das ist abhängig vom targetLevel
-    if (Date.now()-this.lastUserInteraction>3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
-      this.sliderElement.value!.valueAsNumber=this.level;
+    this.level = state[1]; //das ist das storedLevel, das repräsentiert die Stellung des Sliders wohl am besten
+    this.on = state[0] != 0; //das ist abhängig vom targetLevel
+    if (Date.now() - this.lastUserInteraction > 3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
+      this.sliderElement.value!.valueAsNumber = Math.floor(this.level/this.MULTIPLIER);
       //this.sliderElement.value!.disabled=!this.on;
-      console.info(`${fb.ApplicationId[this.applicationId]} recvs  ${state[3]} ${state[0]==0?"OFF":"ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
-    }else{
-      console.info(`${fb.ApplicationId[this.applicationId]} blocks ${state[3]} ${state[0]==0?"OFF":"ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
+      console.info(`${fb.ApplicationId[this.applicationId]} recvs  ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
+    } else {
+      console.info(`${fb.ApplicationId[this.applicationId]} blocks ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
     }
   }
 
   private onslide() {
-    this.lastUserInteraction=Date.now();
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}`);
-    cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber, this.ctx);
+    this.lastUserInteraction = Date.now();
+    console.info(`${fb.ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}*${this.MULTIPLIER}`);
+    cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber*this.MULTIPLIER, this.ctx);
   }
   protected CoreAppHtmlTemplate = () => html`
-  <button ${ref(this.inputElement)} class="withsvg toggle-button ${this.on?'active':''}" style="fill:yellow;" @click=${(e:MouseEvent) => this.oninput(e)}>${unsafeSVG(lightbulb)}<span>On Off<span></button>
-  <input ${ref(this.sliderElement)} @mouseup=${()=>this.lastUserInteraction=Date.now()} @touchend=${()=>this.lastUserInteraction=Date.now()} @change=${()=>this.lastUserInteraction=Date.now()} @input=${() => this.onslide()} type="range" min="0" max="65535">
+  <button ${ref(this.inputElement)} class="withsvg toggle-button ${this.on ? 'active' : ''}" style="fill:yellow;" @click=${(e: MouseEvent) => this.oninput(e)}>${unsafeSVG(lightbulb)}<span>On Off<span></button>
+  <input ${ref(this.sliderElement)} @mouseup=${() => this.lastUserInteraction = Date.now()} @touchend=${() => this.lastUserInteraction = Date.now()} @change=${() => this.lastUserInteraction = Date.now()} @input=${() => this.onslide()} type="range" min="0" max="255" style="flex-grow: 1;" step=1 value="${this.level}">
   `
 }
 
@@ -303,20 +301,20 @@ export class SoundApplication extends SensactApplication {
   private sliderElement: Ref<HTMLInputElement> = createRef()
   private btnMute: Ref<HTMLButtonElement> = createRef()
   private btnPlay: Ref<HTMLButtonElement> = createRef()
-  
-  private isPlaying:boolean=false;
-  private volume:number=-1;
-  private muted:boolean=false;
-  
-  private lastUserInteraction:number=0;
-  
+
+  private isPlaying: boolean = false;
+  private volume: number = -1;
+  private muted: boolean = false;
+
+  private lastUserInteraction: number = 0;
+
   protected CoreAppHtmlTemplate = () => html`
-  <button ${ref(this.btnMute)} class="${this.muted?'':'active'}" @click=${(e:MouseEvent) => this.onBtnMute(e)}>${this.muted?"🔇":"🔈"}</button>
-  <button ${ref(this.btnPlay)} class="${this.isPlaying?'active':''}" @click=${(e:MouseEvent) => this.onBtnPlay(e)}>▶</button>
-  <input ${ref(this.sliderElement)} @mouseup=${()=>this.lastUserInteraction=Date.now()} @touchend=${()=>this.lastUserInteraction=Date.now()} @change=${()=>this.lastUserInteraction=Date.now()} @input=${() => this.onInputSlide()} type="range" min="0" max="65535">
+  <button ${ref(this.btnMute)} class="${this.muted ? '' : 'active'}" @click=${(e: MouseEvent) => this.onBtnMute(e)}>${this.muted ? "🔇" : "🔈"}</button>
+  <button ${ref(this.btnPlay)} class="${this.isPlaying ? 'active' : ''}" @click=${(e: MouseEvent) => this.onBtnPlay(e)}>▶</button>
+  <input ${ref(this.sliderElement)} @mouseup=${() => this.lastUserInteraction = Date.now()} @touchend=${() => this.lastUserInteraction = Date.now()} @change=${() => this.lastUserInteraction = Date.now()} @input=${() => this.onInputSlide()} type="range" min="256" max="65535"step="256">
   `
-  private onBtnMute(e:MouseEvent) {
-    this.muted=!this.muted;
+  private onBtnMute(e: MouseEvent) {
+    this.muted = !this.muted;
     console.info(`${fb.ApplicationId[this.applicationId]} sends  mute=${this.muted}`);
     if (this.muted) {
       cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
@@ -325,42 +323,38 @@ export class SoundApplication extends SensactApplication {
     }
   }
 
-  private onBtnPlay(e:MouseEvent) {
+  private onBtnPlay(e: MouseEvent) {
     console.info(`${fb.ApplicationId[this.applicationId]} sends  play song 1!`);
     cmd.SendSET_SIGNALCommand(this.applicationId, 1, this.ctx);
   }
 
   private onInputSlide() {
-    this.lastUserInteraction=Date.now();
+    this.lastUserInteraction = Date.now();
     console.info(`${fb.ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}`);
     cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber, this.ctx);
   }
-  
+
 
   /*
-	eFillStatusResult cSound::FillStatus(iSensactContext &ctx, std::array<uint16_t, 4>& buf){
-		bool isPlayingMP3=false;
-		ctx.IsPlayingMP3(isPlayingMP3);
-		buf[0]=isPlayingMP3;
-		buf[1]=this->sound;
-		buf[2]=this->currentVolume;
-		buf[3]=this->muted;
-		return eFillStatusResult::OK;
-	}
+  eFillStatusResult cSound::FillStatus(iSensactContext &ctx, std::array<uint16_t, 4>& buf){
+    bool isPlayingMP3=false;
+    ctx.IsPlayingMP3(isPlayingMP3);
+    buf[0]=isPlayingMP3;
+    buf[1]=this->sound;
+    buf[2]=this->currentVolume;
+    buf[3]=this->muted;
+    return eFillStatusResult::OK;
+  }
   */
 
-  public UpdateState(state:Uint16Array){
-   
+  public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.isPlaying=state[0]!=0;
-    this.volume=state[1];
-    this.muted=state[3]!=0;
-    if (Date.now()-this.lastUserInteraction>3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
-      this.sliderElement.value!.valueAsNumber=this.volume;
+    this.isPlaying = state[0] == 2;
+    this.volume = state[1];
+    this.muted = state[3] != 0;
+    if (Date.now() - this.lastUserInteraction > 3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
+      this.sliderElement.value!.valueAsNumber = this.volume;
     }
     console.info(`${fb.ApplicationId[this.applicationId]} recvs isPlaying:${this.isPlaying}, volume:${this.volume} muted:${this.muted}`);
   }
-
-
-
 }

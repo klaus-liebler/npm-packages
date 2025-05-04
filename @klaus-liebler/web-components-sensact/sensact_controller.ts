@@ -18,6 +18,7 @@ import  "@klaus-liebler/commons"
 
 export class SensactController extends ScreenController implements ISensactContext {
     
+    
     public SendCommandMessage(id: ApplicationId, cmd: Command, payload: DataView) {
         let b = new flatbuffers.Builder(1024);
         const payloadArray = Array.from(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength));
@@ -40,6 +41,7 @@ export class SensactController extends ScreenController implements ISensactConte
 
     private groups: Array<ApplicationGroup>;
     private filterLocal:boolean=true;
+    private filterLevel: string="";
 
     private btnSortTechnology() {
         var tech2apps = new Map<string, Array<SensactApplication>>();
@@ -65,10 +67,22 @@ export class SensactController extends ScreenController implements ISensactConte
         this.btnSortTechnology()
     }
 
+    private btnOnlyAppsOfLevel(e:MouseEvent, level:string){
+        const b = e.currentTarget as HTMLButtonElement;
+        window.document.querySelectorAll(".levelfilter").forEach((b) => {
+            b.classList.remove('active');
+        })
+        b.classList.add('active');
+        this.filterLevel=level;
+        console.log(`Only Level ${this.filterLevel}`)
+        this.btnSortRooms()
+    }
+
     private btnSortRooms() {
         var level_room2apps = new Map<string, Array<SensactApplication>>();
         for (const appc of this.id2appContainer.values()) {
             if(this.filterLocal && !appc.local) continue;
+            if(this.filterLevel!="" && this.filterLevel != GetLevelFromApplicationId(appc.app.applicationId)) continue;
             var room_level = GetRoomFromApplicationId(appc.app.applicationId) + "_" + GetLevelFromApplicationId(appc.app.applicationId);
             var arr = level_room2apps.getOrAdd(room_level, () => new Array<SensactApplication>());
             arr.push(appc.app);
@@ -94,6 +108,12 @@ export class SensactController extends ScreenController implements ISensactConte
     <h1>Sensact Controls</h1>
         
     <div class="buttons">
+        <button class="levelfilter active" @click=${(e) => this.btnOnlyAppsOfLevel(e, "")}>X</button>
+        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L0")}>K</button>
+        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L1")}>E</button>
+        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L2")}>O</button>
+        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L3")}>D</button>
+        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "LX")}>A</button>
         <button class="withsvg" @click=${() => this.btnSortRooms()}>${unsafeSVG(bed)}<span>Sort Rooms<span></button>
         <button class="withsvg" @click=${() => this.btnSortTechnology()}>${unsafeSVG(lightbulb)}<span>Sort Tech<span></button>
         <button class="withsvg toggle-button active" @click=${(e:MouseEvent) => this.btnOnlyLocalApps(e)}>${unsafeSVG(arrows_to_circle)}<span>Only Local Apps<span></button>
@@ -135,12 +155,16 @@ export class SensactController extends ScreenController implements ISensactConte
             //console.debug(`Unknown app with id ${m.id()}`);
             return;
         }
+        
         const arr = new Uint16Array([
-            m.status()!.data(0) ?? 0,
-            m.status()!.data(1) ?? 0,
-            m.status()!.data(2) ?? 0,
-            m.status()!.data(3) ?? 0,
+            m.status()!.data(0) ?? 0xFF,
+            m.status()!.data(1) ?? 0xFF,
+            m.status()!.data(2) ?? 0xFF,
+            m.status()!.data(3) ?? 0xFF,
         ]);
+        if(m.status()!.data(0)==0xFFFF){
+            return;
+        }
         console.debug(`onNotifyStatus for app '${appc.app.ApplicationDescription}' with data ${arr}`);
         appc.app.UpdateState(arr);
         this.execTemplates();
