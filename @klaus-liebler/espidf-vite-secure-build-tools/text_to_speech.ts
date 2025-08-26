@@ -24,9 +24,10 @@ export async function convertTextToSpeech(sentences: Array<FilenameAndSsml>, tar
   for (const e of sentences) {
     const mp3path = path.join(targetDirectory, e.name + ".mp3");
     if (fs.existsSync(mp3path)) {
+      console.debug(`As ${mp3path} already exists, I skip it.`);
       continue;
     }
-    console.info(`As ${mp3path} does not exist, I try to get it from Google TTS: ${e.ssml}`);
+    console.debug(`As ${mp3path} does not exist, I try to get it from Google TTS: ${e.ssml}`);
     const request: google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
       input: { ssml: e.ssml },
       voice: { name: 'de-DE-Neural2-F', languageCode: "de-DE" },
@@ -34,9 +35,9 @@ export async function convertTextToSpeech(sentences: Array<FilenameAndSsml>, tar
     };
     const [response] = await client.synthesizeSpeech(request);
     writeFileCreateDirLazy(mp3path, response.audioContent as Uint8Array);
-    console.info(`File ${mp3path} successfully created and written`);
+    console.info(`File ${mp3path} successfully created and written with content ${e.ssml}`);
   }
-  console.info(`All sounds are now available as MP3 `)
+  return
 }
 
 export async function listvoices() {

@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { Context } from "./context";
-import { mac_12char } from "./utils";
+import { mac_12char, mac_6char } from "./utils";
 
 
 //Dies hier sind ausschließlich relative Pfade bezogen auf die in gulpfile_config.ts definierten Pfade
@@ -63,11 +63,11 @@ export class Paths{
 
     public static boardSpecificPath(BOARDS:string, mac:number, subdir?:string, filename?:string){
       if(!subdir)
-        return path.join(BOARDS, mac+"_"+mac_12char(mac));
+        return path.join(BOARDS, mac_6char(mac)+"_"+mac+"_"+mac_12char(mac));
       else if(!filename)
-        return path.join(BOARDS, mac+"_"+mac_12char(mac), subdir);
+        return path.join(BOARDS, mac_6char(mac)+"_"+mac+"_"+mac_12char(mac), subdir);
       else
-        return path.join(BOARDS, mac+"_"+mac_12char(mac), subdir, filename);
+        return path.join(BOARDS, mac_6char(mac)+"_"+mac+"_"+mac_12char(mac), subdir, filename);
     }
 
     public existsBoardSpecificPath(subdir:string, filename?:string){

@@ -1,4 +1,4 @@
-import { IBoardInfo } from "./utils";
+import { IBoardInfo, mac_6char } from "./utils";
 import * as esp from "./esp32"
 import * as idf from "./espidf"
 import * as P from "./paths";
@@ -15,6 +15,18 @@ export class Context {
     this.b.flash_encryption_key_burned_and_activated = true;
     const boardInfoJsonPath = P.Paths.boardSpecificPath(this.c.boardsDirectory, this.b.mac, P.BOARD_INFO_JSON_FILENAME);
     fs.writeFileSync(boardInfoJsonPath, JSON.stringify(this.b))
+  }
+
+  public printInfo() {
+    console.log("              MAC: " + mac_6char(this.b.mac));
+    console.log("       Board Name: " + this.b.board_name);
+    console.log("    Board Version: " + this.b.board_version);
+    console.log("      Board Roles: " + (this.b.board_roles ? this.b.board_roles : "(none)"));
+    console.log("   Board Settings: " + (this.b.board_settings ? JSON.stringify(this.b.board_settings) : "(none)"));
+    console.log("  First connected: " + new Date(this.b.first_connected_dt).toLocaleString());
+    console.log("   Last connected: " + new Date(this.b.last_connected_dt).toLocaleString());
+    console.log("Encryption active: " + (this.b.flash_encryption_key_burned_and_activated ? "yes" : "no"));
+    
   }
 
   public p:P.Paths;

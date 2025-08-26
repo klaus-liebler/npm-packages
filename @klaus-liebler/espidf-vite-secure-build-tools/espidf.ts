@@ -25,7 +25,7 @@ export async function createRandomFlashEncryptionKeyLazily(c: Context, keySize: 
     return;
   }
   c.p.createBoardSpecificPathLazy(P.FLASH_KEY_SUBDIR);
-  espsecure(`generate_flash_encryption_key --keylen ${keySize} ${path}`, (line) => true);
+  espsecure(`generate_flash_encryption_key --keylen ${keySize} "${path}"`, (line) => true);
   console.log('Random Flash Encryption Key successfully generated');
 }
 
@@ -133,7 +133,10 @@ export function nvs_partition_gen(c: Context, encrypt: boolean, filterStdOut: (l
   }
 }
 
-export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, nvs_is_encrypted: boolean, write_storage: boolean) {
+export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, write_storage: boolean, nvs_is_encrypted: boolean) {
+  if(c.b.flash_encryption_key_burned_and_activated==false){
+    throw new Error(`Cannot flash encrypted firmware, as flash encryption is not activated for board ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)}. Please use the non-encrypted firmware build.`);
+  }
   const pi = (await FindProbablePorts())[0];
   const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
 
@@ -163,6 +166,9 @@ export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, nvs
 }
 
 export async function flashFirmware(c: Context, write_nvs: boolean, write_storage: boolean) {
+  if(c.b.flash_encryption_key_burned_and_activated){
+    throw new Error(`Cannot flash non-encrypted firmware, as flash encryption is already activated for board ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)}. Please use the encrypted firmware build.`);
+  }
   const pi = (await FindProbablePorts())[0];
   const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
   if (write_storage) {
