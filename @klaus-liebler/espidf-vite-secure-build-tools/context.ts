@@ -4,9 +4,10 @@ import * as idf from "./espidf"
 import * as P from "./paths";
 import fs from "node:fs";
 import path from "node:path";
+import { eEncryptionMode } from "@klaus-liebler/commons";
 
 export class ContextConfig {
-  constructor(public readonly generatedDirectory: string, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion) { }
+  constructor(public readonly generatedDirectory: string, public readonly idfProjectDirectory: string, public readonly boardsDirectory: string, public readonly defaultBoardName: string, public readonly defaultBoardVersion:number, public readonly defaultEncryptionMode:eEncryptionMode) { }
 }
 
 export class Context {
@@ -17,26 +18,47 @@ export class Context {
     fs.writeFileSync(boardInfoJsonPath, JSON.stringify(this.b))
   }
 
-  public printInfo() {
-    console.log("              MAC: " + mac_6char(this.b.mac));
-    console.log("       Board Name: " + this.b.board_name);
-    console.log("    Board Version: " + this.b.board_version);
-    console.log("      Board Roles: " + (this.b.board_roles ? this.b.board_roles : "(none)"));
-    console.log("   Board Settings: " + (this.b.board_settings ? JSON.stringify(this.b.board_settings) : "(none)"));
-    console.log("  First connected: " + new Date(this.b.first_connected_dt).toLocaleString());
-    console.log("   Last connected: " + new Date(this.b.last_connected_dt).toLocaleString());
-    console.log("Encryption active: " + (this.b.flash_encryption_key_burned_and_activated ? "yes" : "no"));
-    
+  public static async printInfo(config: ContextConfig) {
+
+    var esp32 = await esp.GetESP32Object();
+    if (!esp32) {
+      throw new Error(`Updating mac from ESP32 was not successful.`);
+    }
+
+    var currentBoardInfoJsonPath = path.join(config.idfProjectDirectory, P.BOARD_INFO_JSON_FILENAME)
+    var mac_in_json_file = 0;
+    if (fs.existsSync(currentBoardInfoJsonPath)) {
+      mac_in_json_file = (JSON.parse(fs.readFileSync(currentBoardInfoJsonPath).toString()) as IBoardInfo).mac;
+    }
+    console.log("              MAC: " + mac_6char(esp32?.macAsNumber ?? 0) + " (decimal: " + (esp32?.macAsNumber ?? 0) + ")");
+    console.log("       ESP32 Chip: " + esp32.chipName);
+    console.log("         COM Port: " + esp32.comPort.path);
+    console.log(" Is current board: " + (mac_in_json_file==esp32.macAsNumber ? "yes" : "no"));  
+    var isAKnownBoard = fs.existsSync(P.Paths.boardSpecificPath(config.boardsDirectory, esp32.macAsNumber))
+    if(!isAKnownBoard){
+      console.log("No more board info available, as this board is not known yet.");
+      return;
+    }
+    const boardInfoJsonPath = P.Paths.boardSpecificPath(config.boardsDirectory, esp32.macAsNumber, P.BOARD_INFO_JSON_FILENAME);
+    var b = JSON.parse(fs.readFileSync(boardInfoJsonPath).toString()) as IBoardInfo
+    console.log("       Board Name: " + b.board_name);
+    console.log("    Board Version: " + b.board_version);
+    console.log("      Board Roles: " + (b.board_roles ? b.board_roles : "(none)"));
+    console.log("   Board Settings: " + (b.board_settings ? JSON.stringify(b.board_settings) : "(none)"));
+    console.log("  First connected: " + new Date(b.first_connected_dt).toLocaleString());
+    console.log("   Last connected: " + new Date(b.last_connected_dt).toLocaleString());
+    console.log("Encryption active: " + (b.flash_encryption_key_burned_and_activated ? "yes" : "no"));
+
   }
 
-  public p:P.Paths;
+  public p: P.Paths;
 
   private constructor(public c: ContextConfig, public b: IBoardInfo, public i: idf.IIdfProjectInfo | null, public f: idf.IFlasherConfiguration | null) {
-    this.p=new P.Paths(this);
+    this.p = new P.Paths(this);
   }
-  
+
   private static instance: Context | null;
-  
+
   public static async get(config: ContextConfig, updateWithCurrentlyConnectedBoard: boolean = false): Promise<Context> {
     var mac: number = 0;
     const currentBoardInfoJsonPath = path.join(config.idfProjectDirectory, P.BOARD_INFO_JSON_FILENAME)
@@ -87,7 +109,7 @@ export class Context {
       boardInfo = {
         board_name: config.defaultBoardName,
         board_version: config.defaultBoardVersion,
-        board_roles:"",
+        board_roles: "",
         board_settings: {},
         first_connected_dt: Date.now(),
         last_connected_dt: Date.now(),

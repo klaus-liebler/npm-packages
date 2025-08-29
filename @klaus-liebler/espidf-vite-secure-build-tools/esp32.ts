@@ -390,8 +390,9 @@ class VendorProduct{
     public constructor(public readonly vendorId:string, public readonly productId:string){}
 }
 const validUsb=[
-    new VendorProduct("303A", "1001"),
-    new VendorProduct("1A86", "55D3"),
+    new VendorProduct("303A", "1001"),// first gen ESPProg
+    new VendorProduct("303A", "1002"),//second gen ESPProg
+    new VendorProduct("1A86", "55D3"),//internal USB of ESP32-S3-DevKitC-1
 ]
 export async function GetESP32Object(): Promise<ESP32Type|null> {
     let ret:ESP32Type|null;

@@ -107,7 +107,7 @@ All app type partitions
 
 export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c: Context) {
   [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s => {
-    espsecure(`encrypt_flash_data --aes_xts --keyfile ${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)} --address ${s.offset} --output ${path.join(c.p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(c.p.P_BUILD, s.file)}`, () => false);
+    espsecure(`encrypt_flash_data --aes_xts --keyfile "${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" --address ${s.offset} --output ${path.join(c.p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(c.p.P_BUILD, s.file)}`, () => false);
   })
   console.log('Encryption finished');
 }

@@ -11,6 +11,8 @@ export enum TimeGranularity{
   ONE_DAY
 }
 
+export enum eEncryptionMode { ENCRYPTED, NON_ENCRYPTED }
+
 declare global {
   interface Map<K, V> {
     getOrAdd(key: K, valueFactory: () => V): V;
