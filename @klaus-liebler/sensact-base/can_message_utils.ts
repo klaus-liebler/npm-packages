@@ -38,7 +38,7 @@ export class cCANMessageBuilderParserOld{
         for(var i=0; i<payloadLen;i++){
             arr[i]=m.data()?.data(i)!;
         }
-        var s= `ApplicationCommand (old CAN-ID) to id 0x${dc.destinationAppId.toString(16)} (${sensact.ApplicationId[dc.destinationAppId]}); command:0x${dc.commandId.toString(16)} (${sensact.Command[dc.commandId]}); len:${payloadLen}; payload: 0x${uint8Array2HexString(arr)}`
+        var s= `Cmd ${sensact.Command[dc.commandId]} to ${sensact.ApplicationId[dc.destinationAppId]}; (0x${dc.commandId.toString(16)} to 0x${dc.destinationAppId.toString(16)}) with payload 0x${uint8Array2HexString(arr)}`
         console.log(s);
         return s;
 

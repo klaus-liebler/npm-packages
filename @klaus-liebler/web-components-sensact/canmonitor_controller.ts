@@ -23,7 +23,7 @@ export class CanMonitorScreenController extends ScreenController {
 		let d = NotifyCanMessage.getRootAsNotifyCanMessage(bb)
 
 		
-		this.parser.TraceCommandMessage(d);
+		var description = this.parser.TraceCommandMessage(d);
 
 		if (!this.tblCanMessages.value) return;
 		var t = this.tblCanMessages.value
@@ -35,7 +35,7 @@ export class CanMonitorScreenController extends ScreenController {
 		row.insertCell().textContent = d.messageId().toString(16);
 		row.insertCell().textContent = canMessage2HexString(d);
 		row.insertCell().textContent = d.dataLen.toString();
-		row.insertCell().textContent = d.dataLen.toString();
+		row.insertCell().textContent = description;
 	}
 
 	OnCreate(): void {
