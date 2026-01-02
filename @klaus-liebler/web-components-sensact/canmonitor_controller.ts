@@ -32,9 +32,9 @@ export class CanMonitorScreenController extends ScreenController {
 		}
 		var row = t.insertRow(0);
 		row.insertCell().textContent = new Date().toLocaleString("de-DE", MyFavouriteDateTimeFormat);
-		row.insertCell().textContent = d.messageId().toString(16);
-		row.insertCell().textContent = canMessage2HexString(d);
-		row.insertCell().textContent = d.dataLen.toString();
+		row.insertCell().textContent = `0x${d.messageId().toString(16)}`;
+		row.insertCell().textContent = `0x${canMessage2HexString(d)}`;
+		row.insertCell().textContent = d.dataLen().toString();
 		row.insertCell().textContent = description;
 	}
 
@@ -56,8 +56,8 @@ export class CanMonitorScreenController extends ScreenController {
         <thead>
             <tr>
                 <th>Timestamp</th>
-                <th>MessageId</th>
-                <th>Data</th>
+                <th>MessageId [0x]</th>
+                <th>Data [0x]</th>
                 <th>Data Len [byte]</th>
 				<th>Parsed Data</th>
             </tr>

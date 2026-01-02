@@ -13,17 +13,41 @@ export interface ISender{
 
 export abstract class NamespaceAndHandler{
     constructor(public readonly namespace:number){}
+    protected sender?: ISender;
     public abstract Handle(buffer: flatbuffers.ByteBuffer, sender: ISender);
+    public SetSender(sender: ISender){
+        this.sender = sender;
+    }
 }
 
 const WEBSERVER_PORT = 3000;
 const AUTHSERVER_PORT = 3001;
 var websocket_server:weso.WebSocketServer;
-var http_server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
+var http_server: https.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
+var current_ws: weso.WebSocket;
 
+class Sender implements ISender{
+    public send(ns:number, builder:flatbuffers.Builder){
+        if(!current_ws || current_ws.readyState!=weso.WebSocket.OPEN){
+            console.error("No websocket connection available to send data");
+            return;
+        }
+        const data = builder.asUint8Array();
+        const arrayBuffer = new ArrayBuffer(4 + data.byteLength);
+        new DataView(arrayBuffer).setUint32(0, ns, true);
+        const newData = new Uint8Array(arrayBuffer);
+        newData.set(data, 4);
+        current_ws.send(newData);
+    }
+}
 
-
+const sender = new Sender();
 export function StartServers(sslCertificatesRoot:string, handlers:Array<NamespaceAndHandler>){
+
+    let hostCert = fs.readFileSync(path.join(sslCertificatesRoot, "testserver.pem.crt")).toString();
+    let hostPrivateKey = fs.readFileSync(path.join(sslCertificatesRoot, "testserver.pem.key")).toString();
+    let rootCaCert = fs.readFileSync(path.join(sslCertificatesRoot, "rootCA.pem.crt")).toString();
+
     websocket_server = new weso.WebSocketServer({ noServer: true });
     websocket_server.on('connection', (ws: weso.WebSocket) => {
         console.info("Handle connection");
@@ -32,27 +56,18 @@ export function StartServers(sslCertificatesRoot:string, handlers:Array<Namespac
             var b_req = new flatbuffers.ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset + 4, buffer.length - 4));
             let ns = buffer.readUint32LE(0);
             console.log(`Received buffer length ${buffer.byteLength} for Namespace ${ns}`);
-            var cb = new class implements ISender{
-                public send(ns:number, builder:flatbuffers.Builder){
-                    const data = builder.asUint8Array();
-                    const arrayBuffer = new ArrayBuffer(4 + data.byteLength);
-                    new DataView(arrayBuffer).setUint32(0, ns, true);
-                    const newData = new Uint8Array(arrayBuffer);
-                    newData.set(data, 4);
-                    ws.send(newData);
-                      
-                }
-            }
+            current_ws = ws;
             const h =handlers.find(h=>h.namespace==ns);
             if(!h){
                 console.error(`No handler registered for namespace ${ns}`);
                 return;
             }
-            h.Handle(b_req, cb);
+            h.Handle(b_req, sender);
+            handlers.forEach(h=>{h.SetSender(sender);});
         });
     });
-    http_server = http.createServer((req, res) => {
-        //let server = https.createServer({key: hostPrivateKey, cert: hostCert}, (req, res) => {
+    //http_server = http.createServer((req, res) => {
+    http_server = https.createServer({key: hostPrivateKey, cert: hostCert}, (req, res) => {
         console.log(`Request received for '${req.url}'`);
         //var local_path = new URL(req.url).pathname;
     
@@ -117,12 +132,11 @@ export function StartServers(sslCertificatesRoot:string, handlers:Array<Namespac
         console.log(`Webserver with Websockets is running on port ${WEBSERVER_PORT}`);
     });
 
-    let hostCert = fs.readFileSync(path.join(sslCertificatesRoot, "testserver.pem.crt")).toString();
-    let hostPrivateKey = fs.readFileSync(path.join(sslCertificatesRoot, "testserver.pem.key")).toString();
-    let clientCert = fs.readFileSync(path.join(sslCertificatesRoot, "client.pem.crt")).toString();
-    let clientPrivateKey = fs.readFileSync(path.join(sslCertificatesRoot, "client.pem.key")).toString();
-    let rootCACert = fs.readFileSync(path.join(sslCertificatesRoot, "rootCA.pem.crt")).toString();
-    let authserver = https.createServer({ key: hostPrivateKey, cert: hostCert, requestCert:true, rejectUnauthorized:false, ca:[hostCert] }, (req, res) => {
+
+    //let clientCert = fs.readFileSync(path.join(sslCertificatesRoot, "client.pem.crt")).toString();
+    //let clientPrivateKey = fs.readFileSync(path.join(sslCertificatesRoot, "client.pem.key")).toString();
+    //let rootCACert = fs.readFileSync(path.join(sslCertificatesRoot, "rootCA.pem.crt")).toString();
+    let authserver = https.createServer({ key: hostPrivateKey, cert: hostCert, requestCert:true, rejectUnauthorized:false, ca:[rootCaCert] }, (req, res) => {
         console.log(`Request received for '${req.url}'`);
         const peerCert = ((req.socket) as TLSSocket).getPeerCertificate();
         //var local_path = new URL(req.url).pathname;
