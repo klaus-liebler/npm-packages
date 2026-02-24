@@ -46,7 +46,7 @@ ZzFX Features
 'use strict';
 
 // play a zzfx sound
-export function zzfx(...parameters) { return ZZFX.play(...parameters) }
+export function zzfx(...parameters: any[]) { return ZZFX.play(...parameters) }
 
 // zzfx object with some extra functionalty
 export const ZZFX =
@@ -61,14 +61,14 @@ export const ZZFX =
     x: new AudioContext,
 
     // play a sound from zzfx paramerters
-    play: function(...parameters)
+    play: function(...parameters: any[])
     {
         // build samples and start sound
         return this.playSamples(this.buildSamples(...parameters));
     },
 
     // play an array of samples
-    playSamples: function(...samples)
+    playSamples: function(...samples: any[][])
     {
         // create buffer and source
         const buffer = this.x.createBuffer(samples.length, samples[0].length, this.sampleRate),
@@ -108,7 +108,7 @@ export const ZZFX =
     )
     {
         // init parameters
-        let PI2 = Math.PI*2, sign = v => v<0?-1:1, sampleRate = this.sampleRate,
+        let PI2 = Math.PI*2, sign = (v: number) => v<0?-1:1, sampleRate = this.sampleRate,
             startSlide = slide *= 500 * PI2 / sampleRate / sampleRate,
             startFrequency = frequency *= 
                 (1 + randomness*2*Math.random() - randomness) * PI2 / sampleRate,

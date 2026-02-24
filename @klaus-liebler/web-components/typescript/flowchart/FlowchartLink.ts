@@ -8,7 +8,7 @@ export class FlowchartLink {
     private element: SVGPathElement;
     private captionElement:SVGTextElement;
     private captionPath: SVGTextPathElement;
-    constructor(private parent: Flowchart, caption: string, private color: string, private from: FlowchartOutputConnector, private to: FlowchartInputConnector) {
+    constructor(private parent: Flowchart, caption: string, private defaultColor: string, private from: FlowchartOutputConnector, private to: FlowchartInputConnector) {
         this.index = FlowchartLink.MAX_INDEX++;
         this.element = <SVGPathElement>Svg(parent.LinkLayer, "path", ["stroke-width", "" + this.parent.Options.linkWidth, "fill", "none", "id", "LINK" + this.index]);
         this.RefreshPosition();
@@ -25,7 +25,7 @@ export class FlowchartLink {
     get GlobalLinkIndex() { return this.index; }
     get From() { return this.from; }
     get To() { return this.to; }
-    set Color(color: string) { this.color = color; }
+    set Color(color: string) { this.defaultColor = color; }
 
     public RemoveFromDOM() {
         this.element.remove();
@@ -46,7 +46,7 @@ export class FlowchartLink {
     }
 
     public UnsetColor() {
-        this.SetColor(this.parent.Options.defaultLinkColor);
+        this.SetColor(this.defaultColor);
     }
 
     public RefreshPosition() {

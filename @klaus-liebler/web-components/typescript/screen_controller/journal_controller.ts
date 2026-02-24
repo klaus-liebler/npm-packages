@@ -1,5 +1,5 @@
 import { html } from "lit-html";
-import { ResponseWrapper, ResponseJournal, RequestJournal, RequestWrapper, Requests, Responses, Namespace } from "@generated/flatbuffers_ts/journal";
+import { ResponseWrapper, ResponseJournal, RequestJournal, RequestWrapper, Requests, Namespace } from "@generated/flatbuffers_ts/journal";
 
 import { ScreenController } from "./screen_controller";
 import * as flatbuffers from "flatbuffers"

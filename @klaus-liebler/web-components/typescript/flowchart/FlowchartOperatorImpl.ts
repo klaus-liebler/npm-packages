@@ -15,6 +15,7 @@ const Output="Output";
 const Converter="Converter";
 const Sound = "Sound";
 const Control = "Control";
+//@ts-ignore
 const Custom ="Custom";
 
 const CONSTANT = "Constant";
@@ -55,7 +56,7 @@ export class OperatorRegistry{
     }
 
     public populateOperatorLib(parent: HTMLDivElement, onmousedownHandler: (e:MouseEvent, ti:TypeInfo)=>any) { 
-        let y = 10;
+        //let y = 10;
         let top = Html(parent, "ul", [], []);
         for (const kv of this.groupName2operatorName2Info.entries()) {
             let groupName = kv[0];
@@ -157,7 +158,7 @@ class Sensor_CommonSensorOperator extends FlowchartOperator {
             this.sensorValue=this.sensorValue==this.minOutput?this.maxOutput:this.minOutput;
         }
     }
-    OnSimulationStart(ctx:SimulationContext){
+    OnSimulationStart(_ctx:SimulationContext){
         this.sensorValue=this.minOutput;
     }
     OnSimulationStep(ctx:SimulationContext){
@@ -416,7 +417,7 @@ export class Basic_RSOperator extends FlowchartOperator {
         this.C = new FlowchartOutputConnector(this, "C", 0, ConnectorType.BOOLEAN);
         this.AppendConnectors([this.R, this.S], [this.C]);
     }
-    OnSimulationStart(ctx:SimulationContext){
+    OnSimulationStart(_ctx:SimulationContext){
         this.state=false;
     }
 
@@ -439,7 +440,7 @@ export class Basic_SROperator extends FlowchartOperator {
         this.C = new FlowchartOutputConnector(this, "C", 0, ConnectorType.BOOLEAN);
         this.AppendConnectors([this.R, this.S], [this.C]);
     }
-    OnSimulationStart(ctx:SimulationContext){
+    OnSimulationStart(_ctx:SimulationContext){
         this.state=false;
     }
 
@@ -467,7 +468,7 @@ export class Basic_CNTOperator extends FlowchartOperator {
         this.CurrentValue = new FlowchartOutputConnector(this, "CV", 1, ConnectorType.BOOLEAN);
         this.AppendConnectors([this.CountUp, this.Reset, this.PresetValue], [this.OUT, this.CurrentValue]);
     }
-    OnSimulationStart(ctx:SimulationContext){
+    OnSimulationStart(_ctx:SimulationContext){
         this._CurrentValue=0;
     }
 
@@ -505,7 +506,7 @@ export class Basic_TimekeeperOperator extends FlowchartOperator {
         this.CurrentValue = new FlowchartOutputConnector(this, "CV_ms", 1, ConnectorType.BOOLEAN);
         this.AppendConnectors([this.CountUp, this.Reset, this.PresetValue], [this.OUT, this.CurrentValue]);
     }
-    OnSimulationStart(ctx:SimulationContext){
+    OnSimulationStart(_ctx:SimulationContext){
         this._CurrentValueMs=0;
     }
 
@@ -556,7 +557,7 @@ class Input_CommonButtonOperator extends FlowchartOperator {
         }
     }
 
-    OnSimulationStart(ctx:SimulationContext){
+    OnSimulationStart(_ctx:SimulationContext){
         this.state=false;
     }
 
@@ -566,7 +567,7 @@ class Input_CommonButtonOperator extends FlowchartOperator {
         ctx.SetBoolean(this.O, this.state);
     }
 
-    OnSimulationStop(ctx:SimulationContext){
+    OnSimulationStop(_ctx:SimulationContext){
         this.box.classList.remove("False", "True");
     }
 }
@@ -718,7 +719,7 @@ class Output_CommonLedOperator extends FlowchartOperator {
         this.box.style.fill=state?this.colorOnTRUE:this.colorOnFALSE;
     }
 
-    OnSimulationStop(ctx:SimulationContext){
+    OnSimulationStop(_ctx:SimulationContext){
         this.box.style.removeProperty("fill");
     }
 }
@@ -755,7 +756,7 @@ export class Output_CommonRGBLedOperator extends FlowchartOperator {
         this.box.style.fill=ctx.GetColor(this.LED);
     }
 
-    OnSimulationStop(ctx:SimulationContext){
+    OnSimulationStop(_ctx:SimulationContext){
         this.box.style.removeProperty("fill");
     }
 }
@@ -810,7 +811,7 @@ export class Sound_Sound extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.songIndexHTMLSelect==null) return;
         this.cfg_setValue(SONG_INDEX, parseInt(this.songIndexHTMLSelect.value));
     }
@@ -837,7 +838,7 @@ export class Arithmetic_ConstFLOATOperator extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.constantHTMLInput==null) return;
         this.cfg_setValue(CONSTANT, this.constantHTMLInput.valueAsNumber);
     }
@@ -868,7 +869,7 @@ export class Arithmetic_ConstINTEGEROperator extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.constantHTMLInput==null) return;
         this.cfg_setValue(CONSTANT, this.constantHTMLInput.valueAsNumber);
     }
@@ -907,7 +908,7 @@ export class Bool2ColorConvert extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.colorTRUEHTMLInput==null || this.colorFALSEHTMLInput==null) return;
         this.cfg_setValue(COLOR_TRUE, this.colorTRUEHTMLInput.value);
         this.cfg_setValue(COLOR_FALSE, this.colorFALSEHTMLInput.value);
@@ -953,7 +954,7 @@ export class Bool2IntConvert extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.numberFALSEHTMLInput==null || this.numberTRUEHTMLInput==null) return;
         this.cfg_setValue(NUMBER_TRUE, this.numberTRUEHTMLInput.valueAsNumber);
         this.cfg_setValue(NUMBER_FALSE, this.numberFALSEHTMLInput.valueAsNumber);
@@ -991,7 +992,7 @@ export class Bool2FloatConvert extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.numberFALSEHTMLInput==null || this.numberTRUEHTMLInput==null) return;
         this.cfg_setValue(NUMBER_TRUE, this.numberTRUEHTMLInput.valueAsNumber);
         this.cfg_setValue(NUMBER_FALSE, this.numberFALSEHTMLInput.valueAsNumber);
@@ -1100,7 +1101,7 @@ export class Basic_TONOperator extends FlowchartOperator {
         this.AppendConnectors([this.inputTRIGGER, this.inputPresetTime_msecs], [this.output,this.outputElapsedTime_msecs]);
     }
 
-    public OnSimulationStart(ctx:SimulationContext){
+    public OnSimulationStart(_ctx:SimulationContext){
         this.inputPositiveEdge = Number.MAX_VALUE;
     }
 
@@ -1139,7 +1140,7 @@ export class Basic_TOFOperator extends FlowchartOperator {
         this.AppendConnectors([this.inputTRIGGER, this.inputPresetTime_msecs], [this.output,this.outputElapsedTime_msecs]);
     }
 
-    public OnSimulationStart(ctx:SimulationContext){
+    public OnSimulationStart(_ctx:SimulationContext){
         this.inputNegativeEdge = 0;
     }
 
@@ -1267,7 +1268,7 @@ export class Custom_XYZBlock extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         this.cfg_setValue("Value1", this.value1HTMLInput!.valueAsNumber);
         this.cfg_setValue("Value2", this.value2HTMLInput!.valueAsNumber);
         this.cfg_setValue("Value3", this.value3HTMLInput!.valueAsNumber);
@@ -1315,7 +1316,7 @@ export class Control_PID extends FlowchartOperator {
         return true;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         if(this.directionHTMLSelect==null) return;
         this.cfg_setValue(KP, this.kpHTMLInput!.valueAsNumber);
         this.cfg_setValue(Tn, parseInt(this.tnHTMLInput!.value));

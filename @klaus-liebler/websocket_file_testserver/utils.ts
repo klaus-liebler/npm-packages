@@ -14,7 +14,7 @@ export interface ISender{
 export abstract class NamespaceAndHandler{
     constructor(public readonly namespace:number){}
     protected sender?: ISender;
-    public abstract Handle(buffer: flatbuffers.ByteBuffer, sender: ISender);
+    public abstract Handle(buffer: flatbuffers.ByteBuffer, sender: ISender):void;
     public SetSender(sender: ISender){
         this.sender = sender;
     }
@@ -25,6 +25,7 @@ const AUTHSERVER_PORT = 3001;
 var websocket_server:weso.WebSocketServer;
 var http_server: https.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
 var current_ws: weso.WebSocket;
+var handlers: Array<NamespaceAndHandler> = new Array<NamespaceAndHandler>();
 
 class Sender implements ISender{
     public send(ns:number, builder:flatbuffers.Builder){
@@ -41,9 +42,35 @@ class Sender implements ISender{
     }
 }
 
-const sender = new Sender();
-export function StartServers(sslCertificatesRoot:string, handlers:Array<NamespaceAndHandler>){
+export function OnMessage(buffer: Buffer, ws: weso.WebSocket){
+    var b_req = new flatbuffers.ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset + 4, buffer.length - 4));
+    let ns = buffer.readUint32LE(0);
+    console.log(`Received buffer length ${buffer.byteLength} for Namespace ${ns}`);
+    current_ws = ws;
+    const h =handlers.find(h=>h.namespace==ns);
+    if(!h){
+        console.error(`No handler registered for namespace ${ns}`);
+        return;
+    }
+    h.Handle(b_req, sender);
+    handlers.forEach(h=>{h.SetSender(sender);});
+}
 
+export function GetWebSocketServer():weso.WebSocketServer{
+    websocket_server = new weso.WebSocketServer({ noServer: true });
+    websocket_server.on('connection', (ws: weso.WebSocket) => {
+    console.info("Handle connection");
+    ws.on('error', console.error);
+    ws.on('message', (buffer: Buffer, isBinary: boolean) => {
+        OnMessage(buffer, ws);
+    });
+    });
+    return websocket_server;
+}
+
+const sender = new Sender();
+export function StartServers(sslCertificatesRoot:string, handlers_:Array<NamespaceAndHandler>){
+    handlers = handlers_;
     let hostCert = fs.readFileSync(path.join(sslCertificatesRoot, "testserver.pem.crt")).toString();
     let hostPrivateKey = fs.readFileSync(path.join(sslCertificatesRoot, "testserver.pem.key")).toString();
     let rootCaCert = fs.readFileSync(path.join(sslCertificatesRoot, "rootCA.pem.crt")).toString();
@@ -53,17 +80,7 @@ export function StartServers(sslCertificatesRoot:string, handlers:Array<Namespac
         console.info("Handle connection");
         ws.on('error', console.error);
         ws.on('message', (buffer: Buffer, isBinary: boolean) => {
-            var b_req = new flatbuffers.ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset + 4, buffer.length - 4));
-            let ns = buffer.readUint32LE(0);
-            console.log(`Received buffer length ${buffer.byteLength} for Namespace ${ns}`);
-            current_ws = ws;
-            const h =handlers.find(h=>h.namespace==ns);
-            if(!h){
-                console.error(`No handler registered for namespace ${ns}`);
-                return;
-            }
-            h.Handle(b_req, sender);
-            handlers.forEach(h=>{h.SetSender(sender);});
+            OnMessage(buffer, ws);
         });
     });
     //http_server = http.createServer((req, res) => {

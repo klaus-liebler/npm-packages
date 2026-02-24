@@ -1,4 +1,4 @@
-import { TemplateResult, html, render } from 'lit-html';
+import { TemplateResult, html } from 'lit-html';
 import * as flatbuffers from 'flatbuffers';
 import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
 import * as fb from "@generated/flatbuffers_ts/sensact";
@@ -70,7 +70,7 @@ export class ApplicationGroup {
     console.info(`sendRequestGetApplicationStatus for ids ${this.Apps.map(v => v.applicationId).join(",")}`);
 
     var ids = new Array<fb.ApplicationId>();
-    this.Apps.forEach((v, k) => {
+    this.Apps.forEach((v, _k) => {
       ids.push(v.applicationId)
     });
     b.finish(
@@ -92,7 +92,7 @@ export class ApplicationGroup {
       this.btnOpenClose.value!.classList.add("active");
       this.spanArrowContainer.value!.textContent = "▼";
       //invalidate the current state of the application
-      this.Apps.forEach((v, k) => {
+      this.Apps.forEach((v, _k) => {
         v.NoDataFromServerAvailable();
       });
       this.sendRequestGetApplicationStatus();
@@ -115,7 +115,7 @@ export abstract class SensactApplication {
 
   protected syncState: SyncState = SyncState.NODATA;
 
-  public abstract UpdateState(state: Uint16Array);
+  public abstract UpdateState(state: Uint16Array):void;
 
   constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx: ISensactContext) { }
 
@@ -258,8 +258,8 @@ export class SinglePwmApplication extends SensactApplication {
   private level: number = -1;
   private lastUserInteraction: number = 0;
 
-  private oninput(e: MouseEvent) {
-    const _b = e.currentTarget as HTMLButtonElement;
+  private oninput(_e: MouseEvent) {
+    //const _b = e.currentTarget as HTMLButtonElement;
     cmd.SendTOGGLECommand(this.applicationId, this.ctx);
     console.log(`${fb.ApplicationId[this.applicationId]} got TOGGLEd`);
   }
@@ -313,7 +313,7 @@ export class SoundApplication extends SensactApplication {
   <button ${ref(this.btnPlay)} class="${this.isPlaying ? 'active' : ''}" @click=${(e: MouseEvent) => this.onBtnPlay(e)}>▶</button>
   <input ${ref(this.sliderElement)} @mouseup=${() => this.lastUserInteraction = Date.now()} @touchend=${() => this.lastUserInteraction = Date.now()} @change=${() => this.lastUserInteraction = Date.now()} @input=${() => this.onInputSlide()} type="range" min="256" max="65535"step="256">
   `
-  private onBtnMute(e: MouseEvent) {
+  private onBtnMute(_e: MouseEvent) {
     this.muted = !this.muted;
     console.info(`${fb.ApplicationId[this.applicationId]} sends  mute=${this.muted}`);
     if (this.muted) {
@@ -323,7 +323,7 @@ export class SoundApplication extends SensactApplication {
     }
   }
 
-  private onBtnPlay(e: MouseEvent) {
+  private onBtnPlay(_e: MouseEvent) {
     console.info(`${fb.ApplicationId[this.applicationId]} sends  play song 1!`);
     cmd.SendSET_SIGNALCommand(this.applicationId, 1, this.ctx);
   }

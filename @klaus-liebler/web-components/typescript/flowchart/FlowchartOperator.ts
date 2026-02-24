@@ -132,7 +132,7 @@ export abstract class FlowchartOperator {
         this.outputSvgG= <SVGGElement>Svg(this.elementSvgG,"g", ["transform", "translate(140 50)"], ["operator-outputs"]);
 
 
-        this.elementSvgG.onmousedown = (e) => {
+        this.elementSvgG.onmousedown = (_e) => {
             this.lastMouseDownDt=Date.now()
             //console.log(`FlowchartOperator ${this.Caption} onmousedown ${this.lastMouseDownDt}`);
         };
@@ -158,7 +158,7 @@ export abstract class FlowchartOperator {
         let offsetX= e.clientX-this.x;
         let offsetY = e.clientY-this.y;
 
-        document.onmouseup = (e) => {
+        document.onmouseup = (_e) => {
             document.onmouseup = null;
             document.onmousemove = null;
         };
@@ -208,24 +208,24 @@ export abstract class FlowchartOperator {
         }
     }
 
-    public PopulateProperyGrid(parent:HTMLTableSectionElement):boolean
+    public PopulateProperyGrid(_parent:HTMLTableSectionElement):boolean
     {
         return false;
     }
 
-    public SavePropertyGrid(tbody:HTMLTableSectionElement){
+    public SavePropertyGrid(_tbody:HTMLTableSectionElement){
         return;
     }
 
-    public OnSimulationStart(ctx:SimulationContext){
+    public OnSimulationStart(_ctx:SimulationContext){
         return;
     }
 
-    public OnSimulationStep(ctx:SimulationContext){
+    public OnSimulationStep(_ctx:SimulationContext){
         return;
     }
 
-    public OnSimulationStop(ctx:SimulationContext){
+    public OnSimulationStop(_ctx:SimulationContext){
         return;
     }
 
@@ -267,7 +267,7 @@ export abstract class FlowchartOperator {
         this.SerializeFurtherProperties(ctx);
     }
     
-    protected SerializeFurtherProperties(mapper:SerializeContextAndAdressMap):void{
+    protected SerializeFurtherProperties(_mapper:SerializeContextAndAdressMap):void{
         return;
     }
 }

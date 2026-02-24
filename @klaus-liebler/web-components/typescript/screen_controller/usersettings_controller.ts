@@ -13,7 +13,7 @@ import { Severity } from "@klaus-liebler/commons";
 class ConfigGroupRT{
 
     private panelOpen=false;
-    private dataDirty=false;
+    //private dataDirty=false;
     public spanArrowContainer:Ref<HTMLElement> = createRef();
     public divPanel:Ref<HTMLTableSectionElement> = createRef();
     public btnOpenClose:Ref<HTMLElement> = createRef();

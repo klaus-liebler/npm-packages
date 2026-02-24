@@ -46,8 +46,11 @@ export function runCarRace(c: HTMLCanvasElement) {
     // global game variables  
     let playerPos: any;                  // player position 3d vector
     let playerVelocity: any;             // player velocity 3d vector
+    //@ts-ignore
     let playerPitchSpringVector3;          // spring for player pitch bounce
+    //@ts-ignore
     let playerPitchSpringVelocityVector3;  // velocity of pitch spring
+    //@ts-ignore
     let playerPitchRoadVector3;            // pitch of road, or 0 if player is in air
     let playerAirFrame: number;             // how many frames player has been in air
     let worldHeading: number;               // heading to turn skybox
@@ -576,7 +579,7 @@ export function runCarRace(c: HTMLCanvasElement) {
             context.fillText(line.text, c.width / 2, 35 + 35 * parseInt(i));
         }
     }
-
+    //@ts-ignore
     function DebugPrint(text: any, color = '#F00') {
         if (!debug)
             return;

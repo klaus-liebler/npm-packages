@@ -46,20 +46,21 @@ export class Menu {
         this.menuItems.forEach(m=>m.Introduce(this.mm, this))
         let menu = Html(toolbar, "div", [], ["dropdown"]);
         let menuDropBtn = <HTMLButtonElement>Html(menu, "button", [], ["dropbtn"], `${this.caption} ▼` );
-        menuDropBtn.onclick = (e) => {
+        menuDropBtn.onclick = (_e) => {
             this.mm.CloseAllButOne(this);
             this.ToggleShow()
         };
         this.DropContent = Html(menu, "div", [], ["dropdown-content"]) as HTMLDivElement;
         this.menuItems.forEach(mi=>{mi.Render(this.DropContent)});
 
-        this.DropContent.onclick = (e) => { this.ToggleShow() };
+        this.DropContent.onclick = (_e) => { this.ToggleShow() };
         this.Hide();
     }
 }
 
 export class MenuItem {
     private mm!:MenuManager;
+    //@ts-ignore
     private m!:Menu;
     public Introduce(mm:MenuManager,m:Menu){
         this.mm=mm;

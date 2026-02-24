@@ -28,10 +28,6 @@ export class TimeseriesController extends ScreenController {
     }
 
 
-    private sendRequestTimeseries() {
-        //todo: call HTTP GET, file based API
-    }
-
     private updateDate(date: Date, granularity: TimeGranularity) {
         switch (granularity) {
             case TimeGranularity.TEN_SECONDS:
@@ -131,6 +127,7 @@ export class TimeseriesController extends ScreenController {
         this.OnFirstStart();
     }
     OnPause(): void {
+        if(!this.chartSeconds) return;
     }
 
     SetParameter(match:RegExpMatchArray):void{

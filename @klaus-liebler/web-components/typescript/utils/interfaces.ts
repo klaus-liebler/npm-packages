@@ -5,6 +5,10 @@ import { TemplateResult } from "lit-html";
 import { ScreenController } from "../screen_controller/screen_controller";
 import { Severity } from "@klaus-liebler/commons";
 
+export interface IChatbot {
+  Template(): TemplateResult | string;
+}
+
 export interface IDialogController____ {
     ShowDialog(pHandler?: ((ok: boolean, value: string) => any)): void;
 };

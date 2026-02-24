@@ -236,8 +236,10 @@ export function exec_in_idf_terminal(command: string, idfProjectDirectory: strin
     cwd: idfProjectDirectory,
     env: process.env
   });
-  if (stdout)
+  if (stdout){
     stdout.toString().split(os.EOL).filter((v) => filterStdOut(v)).forEach(v => console.log(v.toString()))
+    console.warn("Start this in ESP IDF Terminal! If you get errors related to python or other tools, your ESP IDF Terminal environment is not correctly set up. See https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#get-started-idf-command-line-interface for more information.")
+  }
 }
 
 export interface ConfigEnvironment {

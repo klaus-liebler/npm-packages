@@ -44,7 +44,7 @@ export class FlowchartCompiler {
 
     private sortOperators():FlowchartOperator[]{
         let index2wrappedOperator = new Map<number, NodeWrapper<FlowchartOperator>>();
-        this.index2operator.forEach((v, k, m) => {
+        this.index2operator.forEach((v, _k, _m) => {
             index2wrappedOperator.set(v.GlobalOperatorIndex, new NodeWrapper<FlowchartOperator>(v));
         });
         let wrappedOutputOperators: NodeWrapper<FlowchartOperator>[] = [];

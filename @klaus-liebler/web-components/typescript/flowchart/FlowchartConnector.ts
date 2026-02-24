@@ -60,7 +60,7 @@ export abstract class FlowchartConnector {
         this.connector = <SVGCircleElement>Svg(this.connectorGroup, "circle", ["r","4"], [`operator-${spec.inputOrOutput}-connector`, ConnectorType[type]]);
         this.snapper= <SVGCircleElement>Svg(this.connectorGroup, "circle", ["r","10"], [`operator-${spec.inputOrOutput}-snapper`]);
         
-        this.element.onmouseover = (e) => {
+        this.element.onmouseover = (_e) => {
             for (const link of this.links.values()) {
                 if (link && link != this.parent.Parent.SelectedLink) {
                     link.SetColor(Flowchart._shadeColor(this.parent.Parent.Options.defaultLinkColor, -0.4));
@@ -68,7 +68,7 @@ export abstract class FlowchartConnector {
             }
         }
 
-        this.element.onmouseout = (e) => {
+        this.element.onmouseout = (_e) => {
             for (const link of this.links.values()) {
                 if (link && link != this.parent.Parent.SelectedLink) {
                     link.UnsetColor();
@@ -108,7 +108,8 @@ export class FlowchartInputConnector extends FlowchartConnector {
             parent.Parent._notifyInputConnectorMouseleave(this, e);
         }
     }
-    protected GetLinkpointXOffset(width:number): number{return 0;}  
+    protected GetLinkpointXOffset(_width:number): number{return 0;}  
+    
     protected  getIOSpecifics(){return {inputOrOutput:"input", parent:this.Parent.InputSvgG, translateY:0, dx:8};}
     public GetGlobalConnectorIndexOfSignalSource():number {
         for(let link of this.links.values()){

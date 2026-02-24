@@ -40,7 +40,7 @@ export class PredefinedSchedule extends ScheduleItem{
         super(name, "Predefined", appManagement);
     }
 
-    public OnResponseSchedulerOpen(m:ResponseSchedulerOpen):void{
+    public OnResponseSchedulerOpen(_m:ResponseSchedulerOpen):void{
         return;
     }
 
@@ -159,7 +159,7 @@ export class OneWeekIn15MinutesSchedule extends ScheduleItem implements iWeeklyS
         this.SaveToServer()
     }
 
-    public handleWeeklyScheduleDialog(ok: boolean, referenceHandle: any, value: Array<number>) {
+    public handleWeeklyScheduleDialog(ok: boolean, _referenceHandle: any, value: Array<number>) {
         if(!ok) return
         console.info(`In OneWeekIn15MinutesSchedule: WeeklyScheduleDialog closed with ok, data = ${numberArray2HexString(value)}`)
         this.value=value
@@ -182,7 +182,7 @@ export class OneWeekIn15MinutesSchedule extends ScheduleItem implements iWeeklyS
         this.appManagement.SendFinishedBuilder(Namespace.Value, b);
     }
 
-    private btnEditClicked(e:MouseEvent){
+    private btnEditClicked(_e:MouseEvent){
 
         let b = new flatbuffers.Builder(256);
         b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerOpen, RequestSchedulerOpen.createRequestSchedulerOpen(b, b.createString(this.name), eSchedule.OneWeekIn15Minutes)));   
@@ -412,7 +412,7 @@ export class WeeklyScheduleDialog extends DialogController {
         }
     }
 
-    private tdMouseup(e: MouseEvent) {
+    private tdMouseup(_e: MouseEvent) {
         //console.log(`mouseup @ ${(<HTMLElement>e.target).innerText}`)
         this.isSelecting = false;
     }
@@ -466,7 +466,7 @@ export class WeeklyScheduleDialog extends DialogController {
     
 
     public Template = () => {
-        const weekdayTemplate = (day_name:string, day_index:number) => html`${[...Array(96)].map((name, num) =>
+        const weekdayTemplate = (_day_name:string, _day_index:number) => html`${[...Array(96)].map((_name, _num) =>
             html`<td @mousedown=${(e: MouseEvent) => this.tdMousedown(e)} @mouseenter=${(e: MouseEvent) => this.tdMouseenter(e)} @mouseup=${(e: MouseEvent) => this.tdMouseup(e)}></td>`
         )}`
         const rowTemplates = new Array<TemplateResult<1>>();
@@ -491,21 +491,21 @@ export class WeeklyScheduleDialog extends DialogController {
                 </fieldset>
                 <fieldset>
                     <legend>Comfort Copy</legend>
-                    <input @click=${(e:MouseEvent) => this.copy(0, [1,2,3,4])} type="button" value="Mo➔Di-Fr" />
-                    <input @click=${(e:MouseEvent) => this.copy(0, [1,2,3,4,5,6])} type="button" value="Mo➔Di-So" />
-                    <input @click=${(e:MouseEvent) => this.copy(5, [6])} type="button" value="Sa➔So" />
+                    <input @click=${(_e:MouseEvent) => this.copy(0, [1,2,3,4])} type="button" value="Mo➔Di-Fr" />
+                    <input @click=${(_e:MouseEvent) => this.copy(0, [1,2,3,4,5,6])} type="button" value="Mo➔Di-So" />
+                    <input @click=${(_e:MouseEvent) => this.copy(5, [6])} type="button" value="Sa➔So" />
                 </fieldset>
                 <fieldset>
                     <legend>Comfort Fill</legend>
-                    <input @click=${(e:MouseEvent) => this.setAll(true)} type="button" value="Fill All" />
-                    <input @click=${(e:MouseEvent) => this.setAll(false)} type="button" value="Clear All" />
+                    <input @click=${(_e:MouseEvent) => this.setAll(true)} type="button" value="Fill All" />
+                    <input @click=${(_e:MouseEvent) => this.setAll(false)} type="button" value="Clear All" />
                 </fieldset>
 
             <table class="weekschedule">
                 <thead>
                 <tr>
                     <th></th>
-                    ${[...Array(24)].map((v,i) => html`<th colspan=4>${(i+startHour)%24}:00</th>`)}
+                    ${[...Array(24)].map((_v,i) => html`<th colspan=4>${(i+startHour)%24}:00</th>`)}
                 </tr>
                 </thead>
                 <tbody ${ref(this.tblBody)}>

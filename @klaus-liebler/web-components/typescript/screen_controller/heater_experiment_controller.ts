@@ -305,26 +305,26 @@ public OnFirstStart(): void {
         if(newMode==this.mode) return;
         switch (newMode) {
             case 0:
-                document.querySelectorAll('.heaterexperiment_closedloopctrl').forEach((v, k) => {
+                document.querySelectorAll('.heaterexperiment_closedloopctrl').forEach((v, _k) => {
                     (<HTMLElement>v).style.display = "none";
                 });
-                document.querySelectorAll('.heaterexperiment_openloopctrl').forEach((v, k) => {
+                document.querySelectorAll('.heaterexperiment_openloopctrl').forEach((v, _k) => {
                     (<HTMLElement>v).style.display = "none";
                 });
                 break;
             case 1:
-                document.querySelectorAll('.heaterexperiment_closedloopctrl').forEach((v, k) => {
+                document.querySelectorAll('.heaterexperiment_closedloopctrl').forEach((v, _k) => {
                     (<HTMLElement>v).style.display = "none";
                 });
-                document.querySelectorAll('.heaterexperiment_openloopctrl').forEach((v, k) => {
+                document.querySelectorAll('.heaterexperiment_openloopctrl').forEach((v, _k) => {
                     (<HTMLElement>v).style.display = "inline-block";
                 });
                 break;
             case 2:
-                document.querySelectorAll('.heaterexperiment_closedloopctrl').forEach((v, k) => {
+                document.querySelectorAll('.heaterexperiment_closedloopctrl').forEach((v, _k) => {
                     (<HTMLElement>v).style.display = "inline-block";
                 });
-                document.querySelectorAll('.heaterexperiment_openloopctrl').forEach((v, k) => {
+                document.querySelectorAll('.heaterexperiment_openloopctrl').forEach((v, _k) => {
                     (<HTMLElement>v).style.display = "none";
                 });
                 break;

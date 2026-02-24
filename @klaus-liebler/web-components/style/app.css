@@ -2,7 +2,6 @@
 @import "./dialog.css";
 @import "./loader.css";
 
-
 :root {
   --main-white-color: #f2f2f2;
   --main-black-color: black;
@@ -16,58 +15,58 @@
 
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (max-width:768px) {
+@media (max-width: 768px) {
   body {
     font: 16px/1.5 "Dosis", sans-serif;
-    padding: 0px;
-    margin: 0px;
+    padding: 0;
+    margin: 0;
     overflow-x: hidden;
     width: 100%;
+  }
 
-    >nav {
-      overflow: hidden;
-      background: #333;
-      position: relative;
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 20px;
+  body > nav {
+    overflow: hidden;
+    background: #333;
+    position: relative;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+  }
 
-      >ul {
-        display: none;
-        list-style-type: none;
-        
+  body > nav > ul {
+    display: none;
+    list-style-type: none;
+  }
 
-        >li>a>span:nth-child(1) {
-          display: none;
-        }
-      }
+  body > nav > ul > li > a > span:nth-child(1) {
+    display: none;
+  }
 
-      a {
-        color: white;
-        padding: 14px 16px;
-        text-decoration: none;
-        font-size: 17px;
-        display: block;
-      }
+  body > nav a {
+    color: white;
+    padding: 14px 16px;
+    text-decoration: none;
+    font-size: 17px;
+    display: block;
+  }
 
-
-      >a>i {
-        color: white;
-        background: #333;
-        display: block;
-        position: absolute;
-        right: 0px;
-        top: 0px;
-        width: 32px;
-        font-size: 30px;
-      }
-    }
+  body > nav > a > i {
+    color: white;
+    background: #333;
+    display: block;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 32px;
+    font-size: 30px;
   }
 }
 
-@media (min-width:769px) {
+@media (min-width: 769px) {
   body {
     font: 16px/1.5 "Dosis", sans-serif;
     width: 100vw;
@@ -75,67 +74,69 @@
     display: grid;
     grid-template-columns: 200px 1fr;
     grid-template-rows: 60px 1fr 40px;
-    grid-column-gap: 10px;
-    grid-row-gap: 10px;
+    gap: 10px;
     padding: 0;
     margin: 0;
-
-    >nav {
-      grid-column: 1/span 1;
-      grid-row-start: 2/span 1;
-
-      >a {
-        display: none;
-      }
-
-      >ul {
-        display: block;
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        background-color: #f1f1f1;
-        >li>a{
-          display: block;
-          color: #000;
-          padding: 8px 16px;
-          text-decoration: none;
-          display: flex;
-          flex-direction: row;
-          transition: color .2s ease-out;
-  
-          :hover {
-            color: red;
-          }
-  
-          :nth-child(1) {
-            width: 30px;
-          }
-        }
-      }
-    }
   }
 
-  body>header {
+  body > nav {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  body > nav > a {
+    display: none;
+  }
+
+  body > nav > ul {
+    display: block;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    background-color: #f1f1f1;
+  }
+
+  body > nav > ul > li > a {
+    display: flex;
+    color: #000;
+    padding: 8px 16px;
+    text-decoration: none;
+    flex-direction: row;
+    transition: color 0.2s ease-out;
+  }
+
+  body > nav > ul > li > a:hover {
+    color: red;
+  }
+
+  body > nav > ul > li > a > :nth-child(1) {
+    width: 30px;
+  }
+
+  body > header {
     font-size: 28px;
     font-weight: bold;
-    grid-column: 1/span 2;
+    grid-column: 1 / 3;
     padding: 10px;
     background-size: cover;
     background-position: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
-  body>footer {
+  body > footer {
     background: var(--main-white-color);
-    grid-column: 1/span 2;
-    grid-row-start: 3/span 1;
+    grid-column: 1 / 3;
+    grid-row: 3;
     overflow-y: hidden;
     padding: 10px;
   }
 
-  body>main {
-    grid-column: 2/span 1;
-    grid-row-start: 2;
+  body > main {
+    grid-column: 2;
+    grid-row: 2;
     overflow-y: scroll;
     padding-right: 10px;
   }
@@ -150,39 +151,26 @@
   height: 1px;
 }
 
-#scroller>p {
+#scroller > p {
   font-family: Courier New, Courier, monospace;
   white-space: pre;
-  padding: 0px;
-  margin: 0px;
+  padding: 0;
+  margin: 0;
 }
-
 
 #snackbar {
   visibility: hidden;
-  /* Hidden by default. Visible on click */
   min-width: 250px;
-  /* Set a default minimum width */
   margin-left: -125px;
-  /* Divide value of min-width by 2 */
   background-color: #4e4d4dcd;
-  /* Black background color */
   color: #fff;
-  /* White text color */
   text-align: center;
-  /* Centered text */
   border-radius: 2px;
-  /* Rounded borders */
   padding: 16px;
-  /* Padding */
   position: fixed;
-  /* Sit on top of the screen */
   z-index: 1;
-  /* Add a z-index if needed */
   left: 50%;
-  /* Center the snackbar */
   bottom: 30px;
-  /* 30px from the bottom */
 }
 
 
@@ -191,20 +179,17 @@
     bottom: 0;
     opacity: 0;
   }
-
   to {
     bottom: 30px;
     opacity: 1;
   }
 }
 
-
 @keyframes fadeout {
   from {
     bottom: 30px;
     opacity: 1;
   }
-
   to {
     bottom: 0;
     opacity: 0;
@@ -219,21 +204,10 @@ input:invalid:required {
   background-image: linear-gradient(to right, pink, lightgreen);
 }
 
-.info {
-  color: rgb(102, 249, 102);
-}
-
-.warn {
-  color: yellow;
-}
-
-.error {
-  color: pink;
-}
-
-.dangerous {
-  color: red;
-}
+.info { color: rgb(102, 249, 102); }
+.warn { color: yellow; }
+.error { color: pink; }
+.dangerous { color: red; }
 
 svg.iconsize {
   height: 24px;
@@ -249,11 +223,33 @@ table {
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 }
 
-td,
-th {
+table.autowidth {
+  width: auto;
+  table-layout: fixed;
+}
+
+table.autowidth th:nth-child(1),
+table.autowidth td:nth-child(1) {
+  width: 60px;
+  text-align: center;
+}
+
+table.autowidth th:nth-child(2),
+table.autowidth td:nth-child(2) {
+  width: 80px;
+  text-align: center;
+}
+
+table.autowidth th:nth-child(3),
+table.autowidth td:nth-child(3) {
+  width: auto;
+}
+
+td, th {
   border-top: 1px solid #555555;
   text-align: left;
   padding: 8px;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 td.minwidth {
@@ -261,20 +257,11 @@ td.minwidth {
   white-space: nowrap;
 }
 
-tr:nth-child(odd) {
-  background-color: #dddddd;
-}
+tr:nth-child(odd) { background-color: #ddd; }
+tr:nth-child(even) { background-color: #fff; }
 
-tr:nth-child(even) {
-  background-color: #ffffff;
-}
-
-td>figure {
-  margin: 0px;
-  margin-block-start: 0px;
-  margin-block-end: 0px;
-  margin-inline-start: 0px;
-  margin-inline-end: 0px
+td > figure {
+  margin: 0;
 }
 
 p {
@@ -284,10 +271,7 @@ p {
 
 .diag-box {
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
+  inset: 0;
   height: 100%;
   width: 100%;
   display: none;
@@ -302,69 +286,145 @@ p {
   background-color: #fff;
   border-radius: 10px;
   top: 20%;
-  padding-left: 20px;
-  padding-right: 20px;
+  padding: 0 20px;
 }
 
-.blur {
-  filter: blur(2px);
-}
-
-.gr {
-  background-color: green;
-}
-
-.rd {
-  background-color: red;
-}
-
-.ye {
-  background-color: orange;
-}
+.blur { filter: blur(2px); }
+.gr { background-color: green; }
+.rd { background-color: red; }
+.ye { background-color: orange; }
 
 div.buttons {
   display: flex;
   gap: 15px;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin: 10px 0;
 }
 
 button.withsvg {
   display: flex;
   align-items: center;
   padding: 5px;
-
-  >span {
-    margin-left: 5px;
-  }
-  >svg{
-    height: 24px;
-    width: 24px;
-    path{
-      fill: #000;
-    }
-  }
 }
-button.active{
+
+button.withsvg > span {
+  margin-left: 5px;
+}
+
+button.withsvg > svg {
+  height: 24px;
+  width: 24px;
+}
+
+button.withsvg > svg path {
+  fill: #000;
+}
+
+button.active {
   background-color: #007bff;
   color: #fff;
   border-color: #007bff;
-  >svg path{
-    fill: #e4f70f;
-  }
+}
+
+button.active > svg path {
+  fill: #e4f70f;
 }
 
 div.accordion {
-  width:100%;
-  border: #555555 solid 1px;
+  width: 100%;
+  border: 1px solid #555555;
   margin-bottom: 10px;
-  >button {
-    display: flex; width:100%; align-items:center;
-    >input{
-      height:30px;
-    }
+}
+
+div.accordion > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+div.accordion > button > input {
+  height: 30px;
+}
+
+div.accordion > div > table {
+  margin: 0;
+}
+
+/* User Header Styles */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.username {
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.2s ease-out;
+}
+
+.username:hover {
+  color: #0066cc;
+}
+
+.logout-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, transform 0.1s ease-out;
+  white-space: nowrap;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}
+
+.logout-btn:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 768px) {
+  .user-info {
+    gap: 8px;
   }
-  >div>table{
-    margin: 0px;
+
+  .logout-btn {
+    padding: 5px 10px;
+    font-size: 12px;
   }
+}
+
+@media (max-width: 480px) {
+  .username {
+    display: none;
+  }
+
+  .user-info {
+    gap: 4px;
+  }
+
+  .logout-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
+
+/* Nodemaster Controller input value styling */
+.input-value-zero {
+  background-color: #333333;
+  color: white;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.input-value-active {
+  background-color: #00aa00;
+  color: white;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

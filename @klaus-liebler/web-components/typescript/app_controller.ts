@@ -2,12 +2,11 @@ import "../style/app.css"
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import * as flatbuffers from "flatbuffers";
-import { Chatbot } from "./chatbot";
+import { IChatbot } from "./utils/interfaces";
 import { DialogController, OkDialog } from "./dialog_controller";
-import { runCarRace } from "./screen_controller/racinggame_controller";
 import { DefaultScreenController, ScreenController } from "./screen_controller/screen_controller";
 import { Html} from "./utils/common";
-import { IsNotNullOrEmpty, MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol} from "@klaus-liebler/commons";
+import { MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol} from "@klaus-liebler/commons";
 import { IAppManagement, IScreenControllerHost, IWebsocketMessageListener } from "./utils/interfaces";
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
@@ -37,6 +36,8 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   private modalSpinner: Ref<HTMLDivElement> = createRef();
   private modalSpinnerTimeoutHandle: number = -1;
 
+  private currentUsername: string = "";
+  private userMenuRef: Ref<HTMLDivElement> = createRef();
 
   private menu = new RouterMenu("/", this.routes);
   private mainContent: ScreenController = new DefaultScreenController(this);
@@ -45,7 +46,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   private dialog: Ref<HTMLDivElement> = createRef();
   private snackbarTimeout: number = -1;
 
-  private chatbot: Chatbot;
+  private chatbot: IChatbot|null=null;
 
 
   public ShowDialog(d: DialogController) {
@@ -182,34 +183,68 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     this.ShowDialog(new OkDialog(Severity.ERROR, "Server did not respond"));
   }
 
+
+  private extractUsernameFromCookie(): string {
+    const cookieString = document.cookie;
+    const cookies = cookieString.split(';');
+    
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith('username=')) {
+        return decodeURIComponent(cookie.substring(9));
+      }
+    }
+    
+    // Fallback: Versuche aus Cookie oder localStorage zu ermitteln
+    const storedUsername = localStorage.getItem('username');
+    return storedUsername || '--unknown--';
+  }
+
+  private logout() {
+    // Cookies löschen (Session)
+    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; HttpOnly';
+    document.cookie = 'username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    localStorage.removeItem('username');
+    
+    // Zur Login-Seite umleiten
+    console.log('User logged out');
+    window.location.href = '/';
+  }
+
   public log(text: string) {
     console.log(text)
   }
 
   private easteregg() {
-    if(this.activateEastereggs){
+    if(this.easterEggFn){
       document.body.innerText = "";
       document.body.innerHTML = "<canvas id='c'>"
-      var el = <HTMLCanvasElement>document.getElementById("c")!
-      runCarRace(el);
+      const el = <HTMLCanvasElement>document.getElementById("c")!
+      this.easterEggFn(el);
     }
   }
 
   constructor(
     private readonly appTitle:string, 
     private readonly websocketUrl:string, 
-    private readonly google_api_key_for_chatbot_or_null_to_deactivate:string|null=null, 
-    private readonly activateEastereggs=false, 
-    private readonly additionalFooter:string=""){}
+    private readonly easterEggFn: ((canvas: HTMLCanvasElement) => void) | null = null, 
+    private readonly additionalFooter:string="",
+    chatbot: IChatbot | null = null) {
+    this.chatbot = chatbot;
+  }
 
   
   public Startup() {
-    this.chatbot = new Chatbot(this.google_api_key_for_chatbot_or_null_to_deactivate);
+    this.currentUsername = this.extractUsernameFromCookie();
     const bg=`<svg viewBox="0 0 1440 360" xmlns="http://www.w3.org/2000/svg"><path fill="#9EAFFD" opacity="0.3" d="M0 432 V216 Q432 43.2 864 216 V432z" /><path fill="#9EAFFD" opacity="0.7" d="M0 432 V172.8 Q432 244.8 792 172.8 T1440 158.4 V432z" /></svg>`
     const svgDataUrl = `data:image/svg+xml;base64,${btoa(bg)}`;
     const Template = html`
             <header style="background-image: url('${svgDataUrl}');">
               <span @click=${() => this.easteregg()}> ${this.appTitle} </span>
+              <div class="user-info" ${ref(this.userMenuRef)}>
+                <span class="username">👤 ${this.currentUsername}</span>
+                <button class="logout-btn" @click=${() => this.logout()} title="Abmelden">Logout</button>
+              </div>
             </header>
             <nav>${this.menu.Template()}<a href="javascript:void(0);" @click=${() => this.menu.ToggleHamburgerMenu()}><i>≡</i></a></nav>
             <main ${ref(this.mainRef)}></main>
@@ -217,7 +252,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
             <div ${ref(this.modalSpinner)} class="modal"><span class="loader"></span></div>
             <div id="snackbar">Some text some message..</div>
             <div ${ref(this.dialog)}></div>
-            ${IsNotNullOrEmpty(this.google_api_key_for_chatbot_or_null_to_deactivate)?this.chatbot.Template():""}`
+            ${this.chatbot ? this.chatbot.Template() : ""}`
     render(Template, document.body);
     window.onresize=()=>{
       this.menu.ShowHamburgerMenuIfLargeScreen()
@@ -259,11 +294,6 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     //this.chatbot.Setup();
 
   }
-
-  
-    
-    
-  
 }
 
 

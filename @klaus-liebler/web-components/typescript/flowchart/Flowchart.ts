@@ -208,7 +208,7 @@ export class Flowchart {
         }
     }
 
-    public _notifyGlobalMouseupWithLink(e: MouseEvent) {
+    public _notifyGlobalMouseupWithLink(_e: MouseEvent) {
         if(this.mode!=FlowchartMode.EDIT) return;
         this.unsetTemporaryLink();
     }
@@ -233,7 +233,7 @@ export class Flowchart {
         };
     }
 
-    public _notifyInputConnectorMouseup(c: FlowchartInputConnector, e: MouseEvent) {
+    public _notifyInputConnectorMouseup(c: FlowchartInputConnector, _e: MouseEvent) {
         if(this.mode!=FlowchartMode.EDIT) return;
         if (this.lastOutputConnectorClicked == null) return;
         if (!this.options.multipleLinksOnInput && c.LinksLength > 0) return;
@@ -244,17 +244,17 @@ export class Flowchart {
 
     }
 
-    public _notifyOperatorClicked(o: FlowchartOperator, e: MouseEvent) {
+    public _notifyOperatorClicked(o: FlowchartOperator, _e: MouseEvent) {
         if(this.mode!=FlowchartMode.EDIT) return;
         this.SelectOperator(o);
     }
 
-    public _notifyLinkClicked(link: FlowchartLink, e: MouseEvent) {
+    public _notifyLinkClicked(link: FlowchartLink, _e: MouseEvent) {
         if(this.mode!=FlowchartMode.EDIT) return;
         this.selectLink(link);
     }
 
-    public _notifyInputConnectorMouseenter(c: FlowchartInputConnector, e: MouseEvent) {
+    public _notifyInputConnectorMouseenter(c: FlowchartInputConnector, _e: MouseEvent) {
         if(this.mode!=FlowchartMode.EDIT) return;
         if (this.lastOutputConnectorClicked == null || this.lastOutputConnectorClicked.Type != c.Type) return;
         if (!this.options.multipleLinksOnInput && c.LinksLength > 0) return;
@@ -266,7 +266,7 @@ export class Flowchart {
         this.temporaryLink.setAttribute('y2', "" + end.y);
     }
 
-    public _notifyInputConnectorMouseleave(c: FlowchartInputConnector, e: MouseEvent) {
+    public _notifyInputConnectorMouseleave(_c: FlowchartInputConnector, _e: MouseEvent) {
         if(this.mode!=FlowchartMode.EDIT) return;
         this.temporaryLinkSnapped = false;
         this.temporaryLink.setAttribute("marker-end", "url(#marker-arrow)");
@@ -344,7 +344,7 @@ export class Flowchart {
         // Lesen Sie die Länge des Binärteils (erste 4 Bytes)
         const binaryLength = dataView.getUint32(0, true);
         // Extrahieren Sie den Binär- und den JSON-Teil
-        const _binaryPart = new Uint8Array(arrayBuffer, 4, binaryLength);
+        //const _binaryPart = new Uint8Array(arrayBuffer, 4, binaryLength);
         const jsonPart = new TextDecoder().decode(arrayBuffer.slice(4 + binaryLength));
         return JSON.parse(jsonPart);
     }
@@ -372,7 +372,7 @@ export class Flowchart {
         reader.readAsArrayBuffer(files[0]);
     }
 
-    private onResponseFbdRun(m:ResponseFbdRun){
+    private onResponseFbdRun(_m:ResponseFbdRun){
         this.appManagement.ShowSnackbar(Severity.SUCCESS,`File now runs on Lab@Home`);
     }
 
@@ -421,7 +421,7 @@ export class Flowchart {
         }
     }
 
-    private async deleteFdbFile(path) {
+    private async deleteFdbFile(path: string) {
         try {
             const response = await fetch(this.options.httpServerBasePath + path, {
                 method: 'DELETE',
@@ -432,7 +432,7 @@ export class Flowchart {
             }
     
             this.appManagement.ShowSnackbar(Severity.SUCCESS, `File ${path} deleted successfully`);
-        } catch (error) {
+        } catch (error: any) {
             console.error('There was a problem with the delete operation:', error);
             this.appManagement.ShowSnackbar(Severity.ERROR, `Failed to delete file ${path}: ${error.message}`);
         }
@@ -479,7 +479,7 @@ export class Flowchart {
     private buildMenu(subcontainer: HTMLDivElement) {
         let fileInput = <HTMLInputElement>Html(subcontainer, "input", ["type", "file", "id", "fileInput", "accept", ".json"]);
         fileInput.style.display = "none";
-        fileInput.onchange = (e) => {
+        fileInput.onchange = (_e) => {
             this.openFbdFromLocalFile(fileInput.files);
         }
         var mm:MenuManager=new MenuManager(
@@ -493,7 +493,7 @@ export class Flowchart {
                 ]),
                 new Menu("Debug",[
                     new MenuItem("☭ Start Debug", ()=>this.postFbdFile(TEMPFBD_FBD_FILEPATH, 
-                        (p:string)=>{
+                        (_p:string)=>{
 
                             var b = new flatbuffers.Builder(1024);
                             b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestFbdRun, RequestFbdRun.createRequestFbdRun(b)));
@@ -578,10 +578,10 @@ export class Flowchart {
 
         //The mouseout event triggers when the mouse pointer leaves any child elements as well the selected element.
         //The mouseleave event is only triggered when the mouse pointer leaves the selected element.
-        operatorLibActivator.onmouseenter = (e) => {
+        operatorLibActivator.onmouseenter = (_e) => {
             this.operatorLibDiv.style.display = "inline";
         }
-        this.operatorLibDiv.onmouseleave = (e) => {
+        this.operatorLibDiv.onmouseleave = (_e) => {
             this.operatorLibDiv.style.display = "none";
         }
 
@@ -753,7 +753,7 @@ export class Flowchart {
         Html(tr_head, "th", [], ["develop-propertygrid-th"], "Value");
         let tbody = <HTMLTableSectionElement>Html(table, "tbody", [], []);
         if (this.selectedOperator!.PopulateProperyGrid(tbody)) {
-            Html(this.propertyGridHtmlDiv, "button", [], ["develop-propertygrid-button"], `Save`).onclick = (e) => {
+            Html(this.propertyGridHtmlDiv, "button", [], ["develop-propertygrid-button"], `Save`).onclick = (_e) => {
                 this.currentDebugInfo = null;
                 operator.SavePropertyGrid(tbody);
             };

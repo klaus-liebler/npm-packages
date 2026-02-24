@@ -58,7 +58,7 @@ export function viteSingleFile({
 		name: "vite:singlefile",
 		config: useRecommendedBuildConfig ? _useRecommendedBuildConfig : undefined,
 		enforce: "post",
-		generateBundle: (options: any, bundle: any, isWrite: boolean) => {
+		generateBundle: (_options: any, bundle: any, _isWrite: boolean) => {
 			console.debug("\n")
 			var html = new Map<string, any>();
 			var css = new Map<string, any>();

@@ -2,6 +2,7 @@ import { html } from "lit-html";
 import { GenerativeModel, GoogleGenerativeAI } from "@google/generative-ai";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { IsNotNullOrEmpty } from "@klaus-liebler/commons";
+import { IChatbot } from "./utils/interfaces";
 
 const SYSTEM_INSTRUCTION = `
 Du bist ein virtueller Assistent in der Web-Oberfläche des Experimentiersystems "Lab@Home". Dein Name ist Labby. Das Experimentiersystem "Lab@Home" ist eine mechatronische Baugruppe, die primär über die Weboberfläche bedient werden kann und die verschiedene Experimente aus der Automatisierungstechnik ermöglicht.
@@ -17,7 +18,7 @@ Alle anderen Menüpunkte werden von Dir nicht unterstützt.
 Wenn Du den Studierenden unterstützt, lästere ab und zu über das deutsche Bildungssystem und ärgere dich, dass der Staat so wenig in die Hochschulen steckt, dass es jetzt schon erforderlich ist, KI statt reale Professoren in der Lehre einzusetzen. Lobe aber ab und zu Herrn Professor Klaus Liebler, der zumindest die Weit- und Einsicht hatte, Dich zu erschaffen.`
 
 
-export class Chatbot {
+export class Chatbot implements IChatbot {
 
   private chatbotToggler: Ref<HTMLButtonElement> = createRef();
   private chatInput:Ref<HTMLTextAreaElement>=createRef();//document.querySelector("#chatbot>footer>textarea");
@@ -26,9 +27,9 @@ export class Chatbot {
  
   private model:GenerativeModel|null=null;
 
-  public constructor(google_api_key:string){
+  public constructor(google_api_key:string|null){
     if(IsNotNullOrEmpty(google_api_key)){
-      const genAI = new GoogleGenerativeAI(google_api_key);
+      const genAI = new GoogleGenerativeAI(google_api_key!);
       this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_INSTRUCTION });
     }
   }

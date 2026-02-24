@@ -114,7 +114,7 @@ export class FilelistDialog extends SimpleDialogWithInputController{
     protected mainTemplate(){
         return html`
         <table><thead><tr><th>File Name</th><th>File Operation</th></tr></thead><tbody>
-            ${this.files.filter(v=>v.endsWith(".json")).map((filename, num) =>
+            ${this.files.filter(v=>v.endsWith(".json")).map((filename, _num) =>
             
             html`<tr><td>${filename}</td><td><button @click=${() => this.handler!(true, filename)} type="button">${unsafeSVG(folderOpen)}</button><button @click=${() => this.deletehandler(true, filename)} type="button">${unsafeSVG(trash)}</button></td></tr>`
         )}</tbody></table>`

@@ -39,7 +39,7 @@ export class SensactController extends ScreenController implements ISensactConte
         this.appManagement.SendFinishedBuilder(Namespace.Value, b, 0);
     }
 
-    private groups: Array<ApplicationGroup>;
+    private groups: Array<ApplicationGroup>=[];
     private filterLocal:boolean=true;
     private filterLevel: string="";
 
@@ -108,12 +108,12 @@ export class SensactController extends ScreenController implements ISensactConte
     <h1>Sensact Controls</h1>
         
     <div class="buttons">
-        <button class="levelfilter active" @click=${(e) => this.btnOnlyAppsOfLevel(e, "")}>X</button>
-        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L0")}>K</button>
-        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L1")}>E</button>
-        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L2")}>O</button>
-        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "L3")}>D</button>
-        <button class="levelfilter" @click=${(e) => this.btnOnlyAppsOfLevel(e, "LX")}>A</button>
+        <button class="levelfilter active" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "")}>X</button>
+        <button class="levelfilter" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "L0")}>K</button>
+        <button class="levelfilter" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "L1")}>E</button>
+        <button class="levelfilter" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "L2")}>O</button>
+        <button class="levelfilter" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "L3")}>D</button>
+        <button class="levelfilter" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "LX")}>A</button>
         <button class="withsvg" @click=${() => this.btnSortRooms()}>${unsafeSVG(bed)}<span>Sort Rooms<span></button>
         <button class="withsvg" @click=${() => this.btnSortTechnology()}>${unsafeSVG(lightbulb)}<span>Sort Tech<span></button>
         <button class="withsvg toggle-button active" @click=${(e:MouseEvent) => this.btnOnlyLocalApps(e)}>${unsafeSVG(arrows_to_circle)}<span>Only Local Apps<span></button>
@@ -144,7 +144,7 @@ export class SensactController extends ScreenController implements ISensactConte
         }
     }
 
-    private onResponseCommand(m: ResponseCommand) {
+    private onResponseCommand(_m: ResponseCommand) {
         console.debug("Command confirmed");
     }
 
@@ -187,6 +187,8 @@ export class SensactController extends ScreenController implements ISensactConte
 
     public constructor(appManagement: IAppManagement){
         super(appManagement)
+        this.apps=[];
+        this.id2appContainer=new Map<number, SensactApplicationAndLocalFlag>();
     }
     private apps:Array<SensactApplicationAndLocalFlag>
     public AddApps(apps:Array<SensactApplicationAndLocalFlag>){

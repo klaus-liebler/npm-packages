@@ -136,7 +136,7 @@ export class SimulationManager implements SimulationContext{
                 for(let kv of types.entries()){
                     let adressOffset=kv[0];
                     if(adressOffset<2) continue;
-                    let value = this.booleans[adressOffset]
+                    //For debugging? let value = this.booleans[adressOffset]
                     let linksToChange=kv[1];
                     linksToChange.forEach((e)=>{
                         e.SetColor("blue");
