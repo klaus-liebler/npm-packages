@@ -159,7 +159,7 @@ export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, wri
       }
     }
   }
-  var cmd = `--port ${pi.path} write_flash --flash_size keep`
+  var cmd = `--port ${pi.path} write-flash --flash-size keep`
   sections.forEach(s => {cmd += ` ${s.offset} ${s.file}`;})
   esptool(cmd, (line) => line.startsWith("Wrote") || line.startsWith("Hash"))
   console.log('Flash (encrypted) finished');
@@ -181,7 +181,7 @@ export async function flashFirmware(c: Context, write_nvs: boolean, write_storag
     if (!fs.existsSync(path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME))) throw new Error(`nvs partition image does not exist`)
     sections.push({ encrypted: false, file: path.join(c.p.GENERATED_USERSETTINGS, P.NVS_PARTITION_BIN_FILENAME), offset: nvsPartitionInfo.Offset!.toString() })
   }
-  var cmd = `--port ${pi.path} write_flash --flash_size keep`;
+  var cmd = `--port ${pi.path} write-flash --flash-size keep`;
   sections.forEach(s => {cmd += ` ${s.offset} ${s.file}`;})
   esptool(cmd, (line) => line.startsWith("Wrote") || line.startsWith("Hash"))
   console.log('Flash (not encrypted) finished');
@@ -215,7 +215,13 @@ export function espsecure(params: string, filterStdOut: (line: string) => boolea
 }
 
 export function esptool(params: string, filterStdOut: (line: string) => boolean, workingDirectory: string = "./") {
-  tool("esptool.py", params, filterStdOut, workingDirectory)
+  // Use module invocation and normalize deprecated syntax for esptool v5+.
+  const normalizedParams = params
+    .replace(/\bwrite_flash\b/g, "write-flash")
+    .replace(/--flash_mode\b/g, "--flash-mode")
+    .replace(/--flash_freq\b/g, "--flash-freq")
+    .replace(/--flash_size\b/g, "--flash-size");
+  exec_in_idf_terminal(`python.exe -m esptool ${normalizedParams}`, workingDirectory, filterStdOut)
 }
 
 
