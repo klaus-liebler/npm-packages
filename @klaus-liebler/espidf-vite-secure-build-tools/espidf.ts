@@ -106,7 +106,7 @@ All app type partitions
 */
 
 export async function encryptPartitions_Bootloader_App_PartitionTable_OtaData(c: Context) {
-  [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata].forEach(s => {
+  [c.f!.bootloader, c.f!.app, c.f!.partitionTable, c.f!.otadata].forEach(s => {
     espsecure(`encrypt_flash_data --aes_xts --keyfile "${c.p.boardSpecificPath(P.FLASH_KEY_SUBDIR, P.FLASH_KEY_FILENAME)}" --address ${s.offset} --output ${path.join(c.p.P_BUILD, s.file.replace(".bin", "-enc.bin"))} ${path.join(c.p.P_BUILD, s.file)}`, () => false);
   })
   console.log('Encryption finished');
@@ -138,7 +138,7 @@ export async function flashEncryptedFirmware(c: Context, write_nvs: boolean, wri
     throw new Error(`Cannot flash encrypted firmware, as flash encryption is not activated for board ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)}. Please use the non-encrypted firmware build.`);
   }
   const pi = (await FindProbablePorts())[0];
-  const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
+  const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!.partitionTable, c.f!.otadata]
 
   sections.forEach(e => e.file = path.join(c.p.P_BUILD, e.file.replace(".bin", "-enc.bin")))//change filename to encrypted
   if (write_storage) {
@@ -170,7 +170,7 @@ export async function flashFirmware(c: Context, write_nvs: boolean, write_storag
     throw new Error(`Cannot flash non-encrypted firmware, as flash encryption is already activated for board ${c.b.board_name} ${c.b.board_version} with mac 0x${mac_12char(c.b.mac)}. Please use the encrypted firmware build.`);
   }
   const pi = (await FindProbablePorts())[0];
-  const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!["partition-table"], c.f!.otadata]
+  const sections: Array<Section> = [c.f!.bootloader, c.f!.app, c.f!.partitionTable, c.f!.otadata]
   if (write_storage) {
     sections.push(c.f!.storage);
   }
@@ -236,7 +236,12 @@ export function spiffsgen_deprecated_use_littlefs_instead(image_size: number, ba
 }
 
 export function exec_in_idf_terminal(command: string, idfProjectDirectory: string, filterStdOut: (line: string) => boolean) {
-  const cmd = `${path.join(IDF_PATH, "export.bat")} && ${command}`
+  const exportBat = validateEspIdfEnvironment();
+  if (!fs.existsSync(idfProjectDirectory)) {
+    throw new Error(`ESP-IDF project directory does not exist: ${idfProjectDirectory}`);
+  }
+
+  const cmd = `"${exportBat}" && ${command}`
   console.info(`Executing ${cmd}`)
   const stdout = execSync(cmd, {
     cwd: idfProjectDirectory,
@@ -246,6 +251,22 @@ export function exec_in_idf_terminal(command: string, idfProjectDirectory: strin
     stdout.toString().split(os.EOL).filter((v) => filterStdOut(v)).forEach(v => console.log(v.toString()))
     console.warn("Start this in ESP IDF Terminal! If you get errors related to python or other tools, your ESP IDF Terminal environment is not correctly set up. See https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#get-started-idf-command-line-interface for more information.")
   }
+}
+
+function validateEspIdfEnvironment(): string {
+  if (!IDF_PATH || IDF_PATH.trim().length === 0) {
+    throw new Error("IDF_PATH is not set. Please set IDF_PATH to your ESP-IDF installation root (contains export.bat).");
+  }
+
+  const exportBat = path.join(IDF_PATH, "export.bat");
+  if (!fs.existsSync(exportBat)) {
+    throw new Error(
+      `IDF_PATH is set to '${IDF_PATH}', but '${exportBat}' does not exist. ` +
+      "Please fix IDF_PATH so it points to a valid ESP-IDF root."
+    );
+  }
+
+  return exportBat;
 }
 
 export interface ConfigEnvironment {

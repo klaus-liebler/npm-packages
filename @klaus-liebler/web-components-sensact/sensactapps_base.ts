@@ -140,26 +140,31 @@ export abstract class SensactApplication {
 }
 
 export class OnOffApplication extends SensactApplication {
-  private inputElement: Ref<HTMLInputElement> = createRef()
+  private inputElement: Ref<HTMLButtonElement> = createRef()
+  private on: boolean = false;
+
+  public override NoDataFromServerAvailable() {
+    super.NoDataFromServerAvailable();
+    this.on = false;
+  }
 
   public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    if (this.inputElement.value) {
-      this.inputElement.value!.checked = state[0] != 0;
-    }
+    this.on = state[0] != 0;
   }
 
   private oninput() {
-    if (this.inputElement.value!.checked) {
+    this.on = !this.on;
+    if (this.on) {
       cmd.SendONCommand(this.applicationId, 0, this.ctx);
     } else {
       cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
     }
-    console.log(`onoff ${this.applicationId} ${this.inputElement.value!.checked}`);
+    console.log(`onoff ${this.applicationId} ${this.on}`);
   }
 
   protected CoreAppHtmlTemplate = () => html`
-       <input ${ref(this.inputElement)} @input=${() => this.oninput()} class="toggle" type="checkbox"></input>`
+  <button ${ref(this.inputElement)} class="withsvg toggle-button sensact-control ${this.on ? 'active' : ''}" @click=${() => this.oninput()}>${unsafeSVG(lightbulb)}<span>On Off</span></button>`
 
 }
 /*
@@ -241,9 +246,9 @@ export class BlindApplication extends SensactApplication {
   }
 
   protected CoreAppHtmlTemplate = () => html`
-  <button ${ref(this.upElement)} @click=${() => this.onUp()} class="${this.movement == eCurrentBlindState.UP ? 'active' : ''}">▲</button>
-  <button ${ref(this.stopElement)} @click=${() => this.onStop()}>▮</button>
-  <button ${ref(this.downElement)} @click=${() => this.onDown()} class="${this.movement == eCurrentBlindState.DOWN ? 'active' : ''}">▼</button>
+  <button ${ref(this.upElement)} @click=${() => this.onUp()} class="withsvg toggle-button sensact-control icon-only ${this.movement == eCurrentBlindState.UP ? 'active' : ''}">▲</button>
+  <button ${ref(this.stopElement)} @click=${() => this.onStop()} class="withsvg toggle-button sensact-control icon-only">▮</button>
+  <button ${ref(this.downElement)} @click=${() => this.onDown()} class="withsvg toggle-button sensact-control icon-only ${this.movement == eCurrentBlindState.DOWN ? 'active' : ''}">▼</button>
   <span style="margin-left:10px">oben</span><progress style="margin-left:10px" ${ref(this.progressElement)} max="100" value="${100 - this.positionAsPercentage}"></progress><span style="margin-left:10px">unten</span>
   <span style="margin-left:10px">${100 - this.positionAsPercentage}%</span>
 
@@ -255,8 +260,14 @@ export class SinglePwmApplication extends SensactApplication {
   private sliderElement: Ref<HTMLInputElement> = createRef()
   private inputElement: Ref<HTMLButtonElement> = createRef()
   private on: boolean = false;
-  private level: number = -1;
+  private level: number = 0;
   private lastUserInteraction: number = 0;
+
+  public override NoDataFromServerAvailable() {
+    super.NoDataFromServerAvailable();
+    this.on = false;
+    this.level = 0;
+  }
 
   private oninput(_e: MouseEvent) {
     //const _b = e.currentTarget as HTMLButtonElement;
@@ -292,7 +303,7 @@ export class SinglePwmApplication extends SensactApplication {
     cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber*this.MULTIPLIER, this.ctx);
   }
   protected CoreAppHtmlTemplate = () => html`
-  <button ${ref(this.inputElement)} class="withsvg toggle-button ${this.on ? 'active' : ''}" style="fill:yellow;" @click=${(e: MouseEvent) => this.oninput(e)}>${unsafeSVG(lightbulb)}<span>On Off<span></button>
+  <button ${ref(this.inputElement)} class="withsvg toggle-button sensact-control ${this.on ? 'active' : ''}" @click=${(e: MouseEvent) => this.oninput(e)}>${unsafeSVG(lightbulb)}<span>On Off</span></button>
   <input ${ref(this.sliderElement)} @mouseup=${() => this.lastUserInteraction = Date.now()} @touchend=${() => this.lastUserInteraction = Date.now()} @change=${() => this.lastUserInteraction = Date.now()} @input=${() => this.onslide()} type="range" min="0" max="255" style="flex-grow: 1;" step=1 value="${this.level}">
   `
 }

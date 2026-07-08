@@ -179,6 +179,10 @@ export class SensactController extends ScreenController implements ISensactConte
                 console.warn(`Unknown app with id ${m.states(i)!.id()}`);
                 continue;
             }
+            if (m.states(i)!.status()!.data(0) == 0xFFFF) {
+                appc.app.NoDataFromServerAvailable();
+                continue;
+            }
             const arr = new Uint16Array([m.states(i)!.status()!.data(0)??0,m.states(i)!.status()!.data(1)??0,m.states(i)!.status()!.data(2)??0,m.states(i)!.status()!.data(3)??0, ])
             appc.app.UpdateState(arr);
         }

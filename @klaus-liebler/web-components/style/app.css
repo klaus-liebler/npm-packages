@@ -306,6 +306,15 @@ button.withsvg {
   padding: 5px;
 }
 
+.sensact-control {
+  min-width: 42px;
+  min-height: 34px;
+}
+
+.sensact-control.icon-only {
+  justify-content: center;
+}
+
 button.withsvg > span {
   margin-left: 5px;
 }
