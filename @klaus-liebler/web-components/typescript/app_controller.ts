@@ -1,13 +1,12 @@
 import "../style/app.css"
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import * as flatbuffers from "flatbuffers";
 import { IChatbot } from "./utils/interfaces";
 import { DialogController, OkDialog } from "./dialog_controller";
 import { DefaultScreenController, ScreenController } from "./screen_controller/screen_controller";
 import { Html} from "./utils/common";
 import { MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol} from "@klaus-liebler/commons";
-import { IAppManagement, IScreenControllerHost, IWebsocketMessageListener } from "./utils/interfaces";
+import { IAppManagement, IScreenControllerHost, IMessageListener } from "./utils/interfaces";
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
@@ -22,15 +21,17 @@ class Router2ContentAdapter implements IRouteHandler {
   }
 }
 
+// 'data' ist immer ein bereits vollstaendig gerahmter Frame (4-Byte-Kopf inkl.) -- AppController
+// haengt selbst keinen Praefix mehr an, s. IAppManagement.SendFrame.
 class BufferedMessage {
-  constructor(public data: Uint8Array, public namespace: number, public maxLockingTimeMs: number) { }
+  constructor(public data: Uint8Array, public namespaceId: number, public maxLockingTimeMs: number) { }
 }
 
 export class AppController implements IAppManagement, IScreenControllerHost {
   private routes: Array<Route> = []
-  
-  private namespace2listener = new Map<number, Array<IWebsocketMessageListener>>();
-  private lockingNamespace:number|null=null;
+
+  private namespaceId2listener = new Map<number, Array<IMessageListener>>();
+  private lockingNamespaceId:number|null=null;
   private socket: WebSocket | null = null;
   private messageBuffer = new Array<BufferedMessage>();
   private modalSpinner: Ref<HTMLDivElement> = createRef();
@@ -55,12 +56,12 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     d.Show();
   }
 
-  public RegisterWebsocketMessageNamespace(listener: IWebsocketMessageListener, ...namespaces: number[]): (() => void){
-    namespaces.forEach((n) => {
-      let arr = this.namespace2listener.get(n)
+  public RegisterNamespace(listener: IMessageListener, ...namespaceIds: number[]): (() => void){
+    namespaceIds.forEach((n) => {
+      let arr = this.namespaceId2listener.get(n)
       if (!arr) {
         arr = []
-        this.namespace2listener.set(n, arr)
+        this.namespaceId2listener.set(n, arr)
       }
       arr.push(listener)
     })
@@ -68,19 +69,20 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   }
 
 
-  public Unregister(listener: IWebsocketMessageListener): void{
+  public Unregister(listener: IMessageListener): void{
     console.info('unregister')
-    this.namespace2listener.forEach((v) => {
+    this.namespaceId2listener.forEach((v) => {
       v.filter((l) => {
         l != listener
       })
     })
   }
-  public SendFinishedBuilder(namespace:number, b:flatbuffers.Builder, maxLockingTimeMs: number=0):void{
-    var arr= b.asUint8Array()
-    
-    
-    var m=new BufferedMessage(arr, namespace, maxLockingTimeMs)
+  // 'bytes' ist bereits ein vollstaendig gerahmter Frame (4-Byte-Kopf namespaceId:u16+
+  // messageTypeId:u16 inkl., von <namespace>.<Message>.encode() geschrieben, oder -- fuer noch
+  // nicht migrierte Flatbuffers-Consumer -- vom Aufrufer selbst zusammengesetzt) -- AppController
+  // haengt selbst keinen weiteren Praefix mehr an.
+  public SendFrame(namespaceId: number, bytes: Uint8Array, maxLockingTimeMs: number=0):void{
+    var m=new BufferedMessage(bytes, namespaceId, maxLockingTimeMs)
     if (!this.socket || this.socket.readyState != this.socket.OPEN) {
       console.info('sendWebsocketMessage --> not OPEN --> buffering')
       this.messageBuffer.push(m);
@@ -90,25 +92,19 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   }
 
   private sendMessage(m:BufferedMessage){
-    console.debug(`Send message of Namespace ${m.namespace} with net length ${m.data.byteLength} to server`)
-    const bufferLength = 4 + m.data.byteLength;
-    const arrayBuffer = new ArrayBuffer(bufferLength);
-    const dataView = new DataView(arrayBuffer);
-    dataView.setUint32(0, m.namespace, true);
-    const newData = new Uint8Array(arrayBuffer);
-    newData.set(m.data, 4);
-    
+    console.debug(`Send message of namespaceId ${m.namespaceId} with length ${m.data.byteLength} to server`)
+
     if(m.maxLockingTimeMs==0){
-      this.lockingNamespace=null;
+      this.lockingNamespaceId=null;
     }else{
-      this.lockingNamespace=m.namespace;
+      this.lockingNamespaceId=m.namespaceId;
       this.setModal(true)
       this.modalSpinnerTimeoutHandle = <number>(<unknown>setTimeout(() => this.modalSpinnerTimeout(), m.maxLockingTimeMs)) //casting to make TypeScript happy
     }
 
-    console.debug(`sendWebsocketMessage for namespace ${m.namespace} --> OPEN --> send to server`)
+    console.debug(`sendWebsocketMessage for namespaceId ${m.namespaceId} --> OPEN --> send to server`)
     try {
-      this.socket!.send(newData)
+      this.socket!.send(m.data)
     } catch (error: any) {
       this.setModal(false)
       if (this.modalSpinnerTimeoutHandle) {
@@ -119,23 +115,22 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   }
 
   private onWebsocketData(arrayBuffer: ArrayBuffer) {
-    const dataView = new DataView(arrayBuffer);
-    const namespace = dataView.getUint32(0, true);
-    console.debug(`A message of namespace ${namespace} with length ${arrayBuffer.byteLength} has arrived: ${ArrayBufferToHexString(arrayBuffer)} .`)
-    if (this.lockingNamespace==namespace) {
+    const view = new DataView(arrayBuffer);
+    const namespaceId = view.getUint16(0, true);
+    const messageTypeId = view.getUint16(2, true);
+    console.debug(`A message of namespaceId ${namespaceId}/messageTypeId ${messageTypeId} with length ${arrayBuffer.byteLength} has arrived: ${ArrayBufferToHexString(arrayBuffer)} .`)
+    if (this.lockingNamespaceId==namespaceId) {
       clearTimeout(this.modalSpinnerTimeoutHandle)
-      this.lockingNamespace = null
+      this.lockingNamespaceId = null
       this.setModal(false)
     }
-    let bb = new flatbuffers.ByteBuffer(new Uint8Array(arrayBuffer, 4))
-    //let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb)
-    const listeners = this.namespace2listener.get(namespace);
+    const listeners = this.namespaceId2listener.get(namespaceId);
     if(!listeners ||listeners.length==0){
-      console.warn(`No Listeners registered for messages with namespace ${namespace}`)
+      console.warn(`No Listeners registered for messages with namespaceId ${namespaceId}`)
       return;
     }
     listeners.forEach((v) => {
-      v.OnMessage(namespace, bb)
+      v.OnMessage(namespaceId, messageTypeId, view)
     })
   }
 

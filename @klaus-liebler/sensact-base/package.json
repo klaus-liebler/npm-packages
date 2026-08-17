@@ -6,7 +6,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
+    "@generated/wsprotocol_ts": "file:../../../sensact/firmware/sensact_firmware/generated/wsprotocol_ts",
     "@klaus-liebler/commons": "file:../commons"
   }
 }

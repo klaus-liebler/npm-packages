@@ -1,12 +1,10 @@
 dialog {
+  margin: auto;
   padding: 0;
   border: 0;
   border-radius: 0.6rem;
   box-shadow: 0 0 1em black;
   min-width: 30vw;
-
- 
-
 }
 
 dialog.simple>main{
@@ -65,7 +63,7 @@ dialog>header{
 }
 
 dialog>main{
-  button {
+  button, input[type="button"] {
     width:50px;
     height: 30px;;
   }
@@ -73,11 +71,9 @@ dialog>main{
 
 dialog>footer {
   border-bottom: 1px solid var(--blue-5);
-  button {
+  button, input[type="button"] {
     padding: 0.4em 1em 0.2em;
   }
-
- 
 }
 
 dialog td:first-child{

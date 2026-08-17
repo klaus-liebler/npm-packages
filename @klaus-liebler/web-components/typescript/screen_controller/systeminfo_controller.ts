@@ -1,8 +1,7 @@
-import {Namespace, Mac6, RequestRestart, RequestSystemData, ResponseSystemData, Responses, Requests, RequestWrapper, ResponseWrapper } from "@generated/flatbuffers_ts/systeminfo";
+import { systeminfo } from "@generated/wsprotocol_ts/ws-protocol";
 
 
 import { ScreenController } from "./screen_controller";
-import * as flatbuffers from 'flatbuffers';
 
 import { UPLOAD_URL } from "../utils/constants";
 
@@ -25,67 +24,62 @@ export class SystemController extends ScreenController {
     private tblParameters:Ref<HTMLTableSectionElement> = createRef();
 
     private sendRequestRestart() {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestRestart, RequestRestart.createRequestRestart(b)));
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
+        const bytes = systeminfo.RequestRestart.encode({ requestId: 0 });
+        this.appManagement.SendFrame(systeminfo.NAMESPACE_ID, bytes);
     }
 
     private sendRequestSystemdata() {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestSystemData, RequestSystemData.createRequestSystemData(b)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 30000);
+        const bytes = systeminfo.RequestSystemData.encode({ requestId: 0 });
+        this.appManagement.SendFrame(systeminfo.NAMESPACE_ID, bytes, 30000);
     }
 
-    public OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
+    public OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void {
 
-        if(namespace!=Namespace.Value){
-            console.error(`system controller namespace problem: ${namespace}!=${Namespace.Value}`)
+        if(namespaceId!=systeminfo.NAMESPACE_ID){
+            console.error(`system controller namespace problem: ${namespaceId}!=${systeminfo.NAMESPACE_ID}`)
             return;
         }
-        var rw=ResponseWrapper.getRootAsResponseWrapper(bb);
-        if(rw.responseType()!=Responses.ResponseSystemData) throw new Error("Unexpected Response Type");
-        var sd=rw.response(new ResponseSystemData());
+        if(messageTypeId!=systeminfo.ResponseSystemData.TYPE_ID) throw new Error("Unexpected Response Type");
+        const sd = systeminfo.ResponseSystemData.decode(view, 0);
         this.tblParameters.value!.textContent = "";
 
-        let secondsEpoch = sd.secondsEpoch();
-        let localeDate = new Date(Number(1000n * secondsEpoch)).toLocaleString("de-DE", MyFavouriteDateTimeFormat);
+        let secondsEpoch = sd.secondsEpoch;
+        let localeDate = new Date(1000 * secondsEpoch).toLocaleString("de-DE", MyFavouriteDateTimeFormat);
         this.insertParameter("Real Time Clock", localeDate + " [" + secondsEpoch.toString() + " secs since epoch]");
-        this.insertParameter("Uptime [secs]", sd.secondsUptime().toString());
-        this.insertParameter("Free Heap [byte]", sd.freeHeap());
-        this.insertParameter("MAC Address WIFI_STA", this.mac6_2_string(sd.macAddressWifiSta()));
-        this.insertParameter("MAC Address WIFI_SOFTAP", this.mac6_2_string(sd.macAddressWifiSoftap()));
-        this.insertParameter("MAC Address BT", this.mac6_2_string(sd.macAddressBt()));
-        this.insertParameter("MAC Address ETH", this.mac6_2_string(sd.macAddressEth()));
-        this.insertParameter("MAC Address IEEE802154", this.mac6_2_string(sd.macAddressIeee802154()));
-        this.insertParameter("Chip Model", findChipModel(sd.chipModel()));
-        this.insertParameter("Chip Features", findChipFeatures(sd.chipFeatures()));
-        this.insertParameter("Chip Revision", sd.chipRevision());
-        this.insertParameter("Chip Cores", sd.chipCores());
-        this.insertParameter("Chip Temperature", sd.chipTemperature().toLocaleString() + "°C");
+        this.insertParameter("Uptime [secs]", sd.secondsUptime.toString());
+        this.insertParameter("Free Heap [byte]", sd.freeHeap);
+        this.insertParameter("MAC Address WIFI_STA", this.mac6_2_string(sd.macAddressWifiSta));
+        this.insertParameter("MAC Address WIFI_SOFTAP", this.mac6_2_string(sd.macAddressWifiSoftap));
+        this.insertParameter("MAC Address BT", this.mac6_2_string(sd.macAddressBt));
+        this.insertParameter("MAC Address ETH", this.mac6_2_string(sd.macAddressEth));
+        this.insertParameter("MAC Address IEEE802154", this.mac6_2_string(sd.macAddressIeee802154));
+        this.insertParameter("Chip Model", findChipModel(sd.chipModel));
+        this.insertParameter("Chip Features", findChipFeatures(sd.chipFeatures));
+        this.insertParameter("Chip Revision", sd.chipRevision);
+        this.insertParameter("Chip Cores", sd.chipCores);
+        this.insertParameter("Chip Temperature", sd.chipTemperature.toLocaleString() + "°C");
 
         this.tblAppPartitions.value!.textContent = "";
-        for (let i = 0; i < sd.partitionsLength(); i++) {
-            if (sd.partitions(i)!.type() != 0) continue;
-            const t = sd.partitions(i)!.type();
-            const st = sd.partitions(i)!.subtype()
+        for (const p of sd.partitions) {
+            if (p.type != 0) continue;
             var row = this.tblAppPartitions.value!.insertRow();
-            row.insertCell().textContent = <string>sd.partitions(i)!.label();
-            row.insertCell().textContent = subtypeToString(t, st);
-            row.insertCell().textContent = (sd.partitions(i)!.size() / 1024) + "k";
-            row.insertCell().textContent = otaStateToString(t,st,sd.partitions(i)!.otaState());
-            row.insertCell().textContent = sd.partitions(i)!.running().toString();
-            row.insertCell().textContent = sd.partitions(i)!.appName();
-            row.insertCell().textContent = sd.partitions(i)!.appVersion();
-            row.insertCell().textContent = sd.partitions(i)!.appDate();
-            row.insertCell().textContent = sd.partitions(i)!.appTime();
+            row.insertCell().textContent = p.label;
+            row.insertCell().textContent = subtypeToString(p.type, p.subtype);
+            row.insertCell().textContent = (p.size / 1024) + "k";
+            row.insertCell().textContent = otaStateToString(p.type, p.subtype, p.otaState);
+            row.insertCell().textContent = p.running.toString();
+            row.insertCell().textContent = p.appName;
+            row.insertCell().textContent = p.appVersion;
+            row.insertCell().textContent = p.appDate;
+            row.insertCell().textContent = p.appTime;
         }
         this.tblDataPartitions.value!.textContent = "";
-        for (let i = 0; i < sd.partitionsLength(); i++) {
-            if (sd.partitions(i)!.type() != 1) continue;
+        for (const p of sd.partitions) {
+            if (p.type != 1) continue;
             var row = this.tblDataPartitions.value!.insertRow();
-            row.insertCell().textContent = <string>sd.partitions(i)!.label();
-            row.insertCell().textContent = subtypeToString(sd.partitions(i)!.type(), sd.partitions(i)!.subtype());
-            row.insertCell().textContent = (sd.partitions(i)!.size() / 1024) + "k";
+            row.insertCell().textContent = p.label;
+            row.insertCell().textContent = subtypeToString(p.type, p.subtype);
+            row.insertCell().textContent = (p.size / 1024) + "k";
         }
     }
 
@@ -95,9 +89,9 @@ export class SystemController extends ScreenController {
         row.insertCell().textContent = value.toString();
     }
 
-    private mac6_2_string(mac: Mac6 | null): string {
+    private mac6_2_string(mac: systeminfo.Mac6 | null): string {
         if (!mac) return "No Mac";
-        return `${mac.v(0)}:${mac.v(1)}:${mac.v(2)}:${mac.v(3)}:${mac.v(4)}:${mac.v(5)}`;
+        return `${mac.v[0]}:${mac.v[1]}:${mac.v[2]}:${mac.v[3]}:${mac.v[4]}:${mac.v[5]}`;
     }
 
     private startUpload() {
@@ -139,7 +133,7 @@ export class SystemController extends ScreenController {
     }
 
     OnCreate(): void {
-        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
+        this.appManagement.RegisterNamespace(this, systeminfo.NAMESPACE_ID);
 
     }
     OnFirstStart(): void {
@@ -191,7 +185,7 @@ export class SystemController extends ScreenController {
             <tbody ${ref(this.tblParameters)}></tbody>
         </table>
 
-        
+
         <h1 class="dangerous">Dangerous Zone</h1>
         <h2>Over-the-air Firmware Update</h2>
         <table>
@@ -224,7 +218,7 @@ export class SystemController extends ScreenController {
                 </tr>
             </tbody>
         </table>
-    
+
     `
 
 }

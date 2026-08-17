@@ -10,9 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@generated/flatbuffers_ts": "file:../../../generated/flatbuffers_ts",
+    "@generated/wsprotocol_ts": "file:../../../sensact/firmware/sensact_firmware/generated/wsprotocol_ts",
     "@klaus-liebler/commons": "file:../commons",
-    "flatbuffers": "25.1.24",
     "lit-html": "^3.2.1"
   }
 }

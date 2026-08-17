@@ -1,8 +1,7 @@
 import { html } from "lit-html";
-import { NotifyCanMessage, Namespace} from "@generated/flatbuffers_ts/canmonitor";
+import { canmonitor } from "@generated/wsprotocol_ts/ws-protocol";
 import { ScreenController } from "@klaus-liebler/web-components";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { ByteBuffer } from "flatbuffers";
 import { IAppManagement } from "@klaus-liebler/web-components/typescript/utils/interfaces.ts";
 import { canMessage2HexString, cCANMessageBuilderParserOld } from "@klaus-liebler/sensact-base/can_message_utils";
 import { MyFavouriteDateTimeFormat } from "@klaus-liebler/commons";
@@ -18,11 +17,12 @@ export class CanMonitorScreenController extends ScreenController {
 		super(appManagement)
 	}
 
-	OnMessage(namespace:number, bb: ByteBuffer): void {
-		if(namespace!=Namespace.Value) return;
-		let d = NotifyCanMessage.getRootAsNotifyCanMessage(bb)
+	OnMessage(namespaceId:number, messageTypeId: number, view: DataView): void {
+		if(namespaceId!=canmonitor.NAMESPACE_ID) return;
+		if(messageTypeId!=canmonitor.NotifyCanMessage.TYPE_ID) return;
+		let d = canmonitor.NotifyCanMessage.decode(view, 0)
 
-		
+
 		var description = this.parser.TraceCommandMessage(d);
 
 		if (!this.tblCanMessages.value) return;
@@ -32,14 +32,14 @@ export class CanMonitorScreenController extends ScreenController {
 		}
 		var row = t.insertRow(0);
 		row.insertCell().textContent = new Date().toLocaleString("de-DE", MyFavouriteDateTimeFormat);
-		row.insertCell().textContent = `0x${d.messageId().toString(16)}`;
+		row.insertCell().textContent = `0x${d.messageId.toString(16)}`;
 		row.insertCell().textContent = `0x${canMessage2HexString(d)}`;
-		row.insertCell().textContent = d.dataLen().toString();
+		row.insertCell().textContent = d.dataLen.toString();
 		row.insertCell().textContent = description;
 	}
 
 	OnCreate(): void {
-		this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
+		this.appManagement.RegisterNamespace(this, canmonitor.NAMESPACE_ID);
 
 	}
 	OnFirstStart(): void {

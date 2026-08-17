@@ -1,7 +1,6 @@
 
 import { ScreenController } from "./screen_controller";
-import * as flatbuffers from 'flatbuffers';
-import { Namespace, RequestNetworkInformation, RequestWifiConnect, RequestWifiDisconnect, Requests, Responses, ResponseNetworkInformation, ResponseWifiConnect, ResponseWrapper, RequestWrapper } from "@generated/flatbuffers_ts/wifimanager";
+import { wifimanager } from "@generated/wsprotocol_ts/ws-protocol";
 //import icon_lock from '../../assets/icon-lock.svg'
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
@@ -134,17 +133,20 @@ export class WifimanagerController extends ScreenController {
         }))
     }
 
+    // requestId wird bewusst konstant 0 gesendet -- der Client haelt zu jedem Zeitpunkt hoechstens
+    // eine Anfrage in Flight (s. lockingNamespaceId in AppController), braucht also kein eigenes
+    // Multiplexing ueber requestId. Server-seitig wird die requestId trotzdem korrekt durchgereicht
+    // (wichtig fuer die asynchron aus den Wifi-Events heraus verschickten ResponseWifiConnect-
+    // Nachrichten, s. webmanager.hh).
     private sendRequestWifiAccesspoints(forceNewSearch: boolean) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestNetworkInformation, RequestNetworkInformation.createRequestNetworkInformation(b, forceNewSearch)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 30000);
+        const bytes = wifimanager.RequestNetworkInformation.encode({ requestId: 0, forceNewSearch });
+        this.appManagement.SendFrame(wifimanager.NAMESPACE_ID, bytes, 30000);
     }
 
     private sendRequestWifiConnect(ssid: string, password: string) {
-        let b = new flatbuffers.Builder(1024);
         console.log(`sendRequestWifiConnect for ${ssid} with password ${password}`);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestWifiConnect, RequestWifiConnect.createRequestWifiConnect(b, b.createString(ssid), b.createString(password))))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 30000);
+        const bytes = wifimanager.RequestWifiConnect.encode({ requestId: 0, ssid, password });
+        this.appManagement.SendFrame(wifimanager.NAMESPACE_ID, bytes, 30000);
     }
 
     private onBtnWifiDisconnect() {
@@ -152,14 +154,12 @@ export class WifimanagerController extends ScreenController {
     }
 
     private sendRequestWifiDisconnect() {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestWifiDisconnect, RequestWifiDisconnect.createRequestWifiDisconnect(b)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 30000);
-
+        const bytes = wifimanager.RequestWifiDisconnect.encode({ requestId: 0 });
+        this.appManagement.SendFrame(wifimanager.NAMESPACE_ID, bytes, 30000);
     }
 
     OnCreate(): void {
-        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
+        this.appManagement.RegisterNamespace(this, wifimanager.NAMESPACE_ID);
     }
 
     OnFirstStart(): void {
@@ -172,23 +172,23 @@ export class WifimanagerController extends ScreenController {
 
     }
 
-    onResponseNetworkInformation(r: ResponseNetworkInformation) {
+    onResponseNetworkInformation(r: wifimanager.ResponseNetworkInformation.Payload) {
         console.log("onResponseNetworkInformation");
-        this.hostname = r.hostname()!;
-        this.ssidAp = r.ssidAp()!;
-        this.passwordAp = r.passwordAp()!;
-        this.ipAp = ip4_2_string(r.ipAp());
-        this.isConnectedSta = r.isConnectedSta()!;
-        this.ssidSta = r.ssidSta()!;
-        this.ipSta = ip4_2_string(r.ipSta());
-        this.netmaskSta = ip4_2_string(r.netmaskSta());
-        this.gatewaySta = ip4_2_string(r.gatewaySta());
-        this.rssiSta = r.rssiSta()!;//.toLocaleString()+"dB");
+        this.hostname = r.hostname;
+        this.ssidAp = r.ssidAp;
+        this.passwordAp = r.passwordAp;
+        this.ipAp = ip4_2_string(r.ipAp);
+        this.isConnectedSta = r.isConnectedSta;
+        this.ssidSta = r.ssidSta;
+        this.ipSta = ip4_2_string(r.ipSta);
+        this.netmaskSta = ip4_2_string(r.netmaskSta);
+        this.gatewaySta = ip4_2_string(r.gatewaySta);
+        this.rssiSta = r.rssiSta;
         let ssid2index = new Map<string, number>();
 
-        for (let i = 0; i < r.accesspointsLength(); i++) {
-            const ssid = r.accesspoints(i)!.ssid();
-            const auth = r.accesspoints(i)!.authMode();
+        for (let i = 0; i < r.accesspoints.length; i++) {
+            const ssid = r.accesspoints[i].ssid;
+            const auth = r.accesspoints[i].authMode;
             let key = ssid + "_" + auth;
             let ap_exist = ssid2index.get(key);
             if (ap_exist === undefined) {
@@ -199,13 +199,13 @@ export class WifimanagerController extends ScreenController {
         let access_points_list = [...ssid2index.values()];
         access_points_list.sort((a, b) => {
             //sort according to rssi
-            var x = r.accesspoints(a)!.rssi();
-            var y = r.accesspoints(b)!.rssi();
+            var x = r.accesspoints[a].rssi;
+            var y = r.accesspoints[b].rssi;
             return x < y ? 1 : x > y ? -1 : 0;
         });
         var templates: Array<TemplateResult<1>> = []
         for (let i of access_points_list) {
-            templates.push(this.apTableTemplate(r.accesspoints(i)!.authMode() != 0, r.accesspoints(i)!.rssi()!, r.accesspoints(i)!.ssid()!))
+            templates.push(this.apTableTemplate(r.accesspoints[i].authMode != 0, r.accesspoints[i].rssi, r.accesspoints[i].ssid))
         }
         render(templates, this.apTable.value!);
 
@@ -215,42 +215,41 @@ export class WifimanagerController extends ScreenController {
 
     }
 
-    onResponseWifiConnect(r: ResponseWifiConnect) {
-        this.isConnectedSta=r.success()!;
-        this.ssidSta = r.ssid()!;
-        this.ipSta = ip4_2_string(r.ip());
-        this.netmaskSta = ip4_2_string(r.netmask());
-        this.gatewaySta = ip4_2_string(r.gateway());
-        this.rssiSta = r.rssi();
+    onResponseWifiConnect(r: wifimanager.ResponseWifiConnect.Payload) {
+        this.isConnectedSta = r.success;
+        this.ssidSta = r.ssid;
+        this.ipSta = ip4_2_string(r.ip);
+        this.netmaskSta = ip4_2_string(r.netmask);
+        this.gatewaySta = ip4_2_string(r.gateway);
+        this.rssiSta = r.rssi;
         render(this.wifiTableTemplate(), this.wifiTable.value!)
-        if (!r.success()) {
+        if (!r.success) {
             console.info("Connection attempt failed!");
             this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, "Connection attempt failed! "));
         }else{
             console.info(`Got connection! to ${this.ssidSta} with ip ${this.ipSta} netmask ${this.netmaskSta} gateway ${this.gatewaySta}`);
-            this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Connection to ${r.ssid()} was successful. `));
+            this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Connection to ${r.ssid} was successful. `));
         }
     }
 
-    OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
-        if(namespace!=Namespace.Value){
-            console.error(`wifimanager controller namespace problem: ${namespace}!=${Namespace.Value}`)
+    OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void {
+        if(namespaceId!=wifimanager.NAMESPACE_ID){
+            console.error(`wifimanager controller namespace problem: ${namespaceId}!=${wifimanager.NAMESPACE_ID}`)
             return;
         }
-        let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb)
-        switch (messageWrapper.responseType()) {
-            case Responses.ResponseNetworkInformation:
-                this.onResponseNetworkInformation(<ResponseNetworkInformation>messageWrapper.response(new ResponseNetworkInformation()));
+        switch (messageTypeId) {
+            case wifimanager.ResponseNetworkInformation.TYPE_ID:
+                this.onResponseNetworkInformation(wifimanager.ResponseNetworkInformation.decode(view, 0));
                 break;
-            case Responses.ResponseWifiConnect:
-                this.onResponseWifiConnect(<ResponseWifiConnect>messageWrapper.response(new ResponseWifiConnect()));
+            case wifimanager.ResponseWifiConnect.TYPE_ID:
+                this.onResponseWifiConnect(wifimanager.ResponseWifiConnect.decode(view, 0));
                 break;
-            case Responses.ResponseWifiDisconnect:
+            case wifimanager.ResponseWifiDisconnect.TYPE_ID:
                 console.log("Manual disconnection was successful.");
                 this.appManagement.ShowDialog(new OkDialog(Severity.INFO, "Manual disconnection was successful. "));
                 break;
             default:
-                console.error(`Unknown messageWrapper.responseType(): ${messageWrapper.responseType().toString()}`)
+                console.error(`Unknown messageTypeId: ${messageTypeId}`)
         }
     }
 }

@@ -1,5 +1,4 @@
-import * as fb from "@generated/flatbuffers_ts/sensact"
+import { sensact } from "@generated/wsprotocol_ts/ws-protocol"
 export interface ISensactContext{
-	SendCommandMessage(id: fb.ApplicationId, cmd: fb.Command, payload: DataView):void;
+	SendCommandMessage(id: sensact.ApplicationId, cmd: sensact.Command, payload: DataView):void;
 }
-

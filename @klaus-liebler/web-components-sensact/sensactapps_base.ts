@@ -1,7 +1,6 @@
 import { TemplateResult, html } from 'lit-html';
-import * as flatbuffers from 'flatbuffers';
 import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
-import * as fb from "@generated/flatbuffers_ts/sensact";
+import { sensact as fb } from "@generated/wsprotocol_ts/ws-protocol";
 import { interfaces } from '@klaus-liebler/web-components';
 import { styleMap } from 'lit-html/directives/style-map.js';
 import * as cmd from "@generated/sensact_sendCommandImplementation/sendCommandImplementation"
@@ -65,22 +64,11 @@ export class ApplicationGroup {
     `}
 
   private sendRequestGetApplicationStatus() {
-    let b = new flatbuffers.Builder(1024);
-
     console.info(`sendRequestGetApplicationStatus for ids ${this.Apps.map(v => v.applicationId).join(",")}`);
 
-    var ids = new Array<fb.ApplicationId>();
-    this.Apps.forEach((v, _k) => {
-      ids.push(v.applicationId)
-    });
-    b.finish(
-      fb.RequestWrapper.createRequestWrapper(
-        b,
-        fb.Requests.RequestStatus,
-        fb.RequestStatus.createRequestStatus(b, fb.RequestStatus.createIdsVector(b, ids))
-      )
-    )
-    this.appManagement.SendFinishedBuilder(fb.Namespace.Value, b, 3000);
+    const ids = this.Apps.map(v => ({ value: v.applicationId }));
+    const bytes = fb.RequestStatus.encode({ requestId: 0, ids });
+    this.appManagement.SendFrame(fb.NAMESPACE_ID, bytes, 3000);
   }
 
 
@@ -293,7 +281,7 @@ export class SinglePwmApplication extends SensactApplication {
       //this.sliderElement.value!.disabled=!this.on;
       console.info(`${fb.ApplicationId[this.applicationId]} recvs  ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
     } else {
-      console.info(`${fb.ApplicationId[this.applicationId]} blocks ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
+      console.info(`${fb.ApplicationId[this.applicationId]} blocks ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value?.valueAsNumber})`);
     }
   }
 

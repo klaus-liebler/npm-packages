@@ -2,7 +2,6 @@ import { ControllerState, ScreenController } from "@klaus-liebler/web-components
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { ApplicationGroup, SensactApplication, SensactApplicationAndLocalFlag } from "./sensactapps_base";
-import * as flatbuffers from 'flatbuffers';
 
 import bed from '@klaus-liebler/svgs/solid/bed.svg?raw'
 import lightbulb from '@klaus-liebler/svgs/solid/lightbulb.svg?raw'
@@ -10,33 +9,27 @@ import arrows_to_circle from '@klaus-liebler/svgs/solid/arrows-to-circle.svg?raw
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import { GetLevelFromApplicationId, GetRoomFromApplicationId, GetTechnologyFromApplicationId } from "@klaus-liebler/sensact-base/application_id_utils";
 
-import { ApplicationId, Command, Namespace, NotifyStatus, Requests, ResponseCommand, Responses, ResponseStatus, ResponseWrapper, RequestWrapper, RequestCommand, Payload } from "@generated/flatbuffers_ts/sensact";
+import { sensact } from "@generated/wsprotocol_ts/ws-protocol";
 import { ISensactContext } from "@klaus-liebler/sensact-base/interfaces";
 import { IAppManagement } from "@klaus-liebler/web-components/typescript/utils/interfaces";
 import  "@klaus-liebler/commons"
 
 
 export class SensactController extends ScreenController implements ISensactContext {
-    
-    
-    public SendCommandMessage(id: ApplicationId, cmd: Command, payload: DataView) {
-        let b = new flatbuffers.Builder(1024);
-        const payloadArray = Array.from(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength));
-        
-        RequestCommand.startRequestCommand(b)
-        RequestCommand.addId(b, id);
-        RequestCommand.addCmd(b, cmd);
-        RequestCommand.addPayload(b, Payload.createPayload(b, payloadArray, payloadArray.length));
-        const offset = RequestCommand.endRequestCommand(b);
 
-        b.finish(
-            RequestWrapper.createRequestWrapper(
-                b,
-                Requests.RequestCommand,
-                offset
-            )
-        )
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 0);
+
+    public SendCommandMessage(id: sensact.ApplicationId, cmd: sensact.Command, payload: DataView) {
+        const payloadArray = Array.from(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength));
+        const data = new Array<number>(8).fill(0);
+        for (let i = 0; i < payloadArray.length && i < 8; i++) data[i] = payloadArray[i];
+
+        const bytes = sensact.RequestCommand.encode({
+            requestId: 0,
+            id,
+            cmd,
+            payload: { data, len: payloadArray.length },
+        });
+        this.appManagement.SendFrame(sensact.NAMESPACE_ID, bytes, 0);
     }
 
     private groups: Array<ApplicationGroup>=[];
@@ -106,7 +99,7 @@ export class SensactController extends ScreenController implements ISensactConte
     private mainElement: Ref<HTMLElement> = createRef();
     public Template = () => html`
     <h1>Sensact Controls</h1>
-        
+
     <div class="buttons">
         <button class="levelfilter active" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "")}>X</button>
         <button class="levelfilter" @click=${(e:MouseEvent) => this.btnOnlyAppsOfLevel(e, "L0")}>K</button>
@@ -122,19 +115,18 @@ export class SensactController extends ScreenController implements ISensactConte
 
     private id2appContainer: Map<number, SensactApplicationAndLocalFlag>;
 
-    OnMessage(namespace: number, bb: flatbuffers.ByteBuffer): void {
-        if (namespace != Namespace.Value) return;
-        
-        var messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
-        switch (messageWrapper.responseType()) {
-            case Responses.ResponseCommand:
-                this.onResponseCommand(<ResponseCommand>messageWrapper.response(new ResponseCommand()));
+    OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void {
+        if (namespaceId != sensact.NAMESPACE_ID) return;
+
+        switch (messageTypeId) {
+            case sensact.ResponseCommand.TYPE_ID:
+                this.onResponseCommand(sensact.ResponseCommand.decode(view, 0));
                 break;
-            case Responses.NotifyStatus: 
-                this.onNotifyStatus(<NotifyStatus>messageWrapper.response(new NotifyStatus()));
+            case sensact.NotifyStatus.TYPE_ID:
+                this.onNotifyStatus(sensact.NotifyStatus.decode(view, 0));
                 break;
-            case Responses.ResponseStatus:
-                this.onResponseStatus(<ResponseStatus>messageWrapper.response(new ResponseStatus()));
+            case sensact.ResponseStatus.TYPE_ID:
+                this.onResponseStatus(sensact.ResponseStatus.decode(view, 0));
                 break;
             default:
                 break;
@@ -144,49 +136,42 @@ export class SensactController extends ScreenController implements ISensactConte
         }
     }
 
-    private onResponseCommand(_m: ResponseCommand) {
+    private onResponseCommand(_m: sensact.ResponseCommand.Payload) {
         console.debug("Command confirmed");
     }
 
-    private onNotifyStatus(m: NotifyStatus) {
-        
-        var appc = this.id2appContainer.get(m.id());
+    private onNotifyStatus(m: sensact.NotifyStatus.Payload) {
+
+        var appc = this.id2appContainer.get(m.id);
         if (!appc) {
-            //console.debug(`Unknown app with id ${m.id()}`);
+            //console.debug(`Unknown app with id ${m.id}`);
             return;
         }
-        
-        const arr = new Uint16Array([
-            m.status()!.data(0) ?? 0xFF,
-            m.status()!.data(1) ?? 0xFF,
-            m.status()!.data(2) ?? 0xFF,
-            m.status()!.data(3) ?? 0xFF,
-        ]);
-        if(m.status()!.data(0)==0xFFFF){
+
+        const arr = new Uint16Array(m.status.data);
+        if(m.status.data[0]==0xFFFF){
             return;
         }
         console.debug(`onNotifyStatus for app '${appc.app.ApplicationDescription}' with data ${arr}`);
         appc.app.UpdateState(arr);
-        this.execTemplates();
     }
 
 
-    private onResponseStatus(m: ResponseStatus) {
-        console.info(`onResponseStatus for ${m.statesLength()} items`);
-        for (var i = 0; i < m.statesLength(); i++) {
-            var appc = this.id2appContainer.get(m.states(i)!.id());
+    private onResponseStatus(m: sensact.ResponseStatus.Payload) {
+        console.info(`onResponseStatus for ${m.states.length} items`);
+        for (const state of m.states) {
+            var appc = this.id2appContainer.get(state.id);
             if (!appc) {
-                console.warn(`Unknown app with id ${m.states(i)!.id()}`);
+                console.warn(`Unknown app with id ${state.id}`);
                 continue;
             }
-            if (m.states(i)!.status()!.data(0) == 0xFFFF) {
+            if (state.status.data[0] == 0xFFFF) {
                 appc.app.NoDataFromServerAvailable();
                 continue;
             }
-            const arr = new Uint16Array([m.states(i)!.status()!.data(0)??0,m.states(i)!.status()!.data(1)??0,m.states(i)!.status()!.data(2)??0,m.states(i)!.status()!.data(3)??0, ])
+            const arr = new Uint16Array(state.status.data);
             appc.app.UpdateState(arr);
         }
-        this.execTemplates();
     }
 
     public constructor(appManagement: IAppManagement){
@@ -198,9 +183,9 @@ export class SensactController extends ScreenController implements ISensactConte
     public AddApps(apps:Array<SensactApplicationAndLocalFlag>){
         this.apps=apps;
     }
-   
+
     OnCreate(): void {
-        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
+        this.appManagement.RegisterNamespace(this, sensact.NAMESPACE_ID);
         this.id2appContainer = new Map<number, SensactApplicationAndLocalFlag>(this.apps.map(v => [v.app.applicationId, v]));
     }
 

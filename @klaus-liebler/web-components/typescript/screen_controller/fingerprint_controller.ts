@@ -1,7 +1,6 @@
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { Finger, Namespace, NotifyEnrollNewFinger, NotifyFingerDetected, RequestCancelInstruction, RequestDeleteAllFingers, RequestDeleteFinger, RequestEnrollNewFinger, RequestFingerActionManually, RequestFingerprintSensorInfo, RequestFingers, RequestRenameFinger, RequestStoreFingerAction, RequestStoreFingerSchedule, RequestWrapper, Requests, ResponseDeleteFinger, ResponseEnrollNewFinger, ResponseFingerprintSensorInfo, ResponseFingers, ResponseWrapper, Responses } from "@generated/flatbuffers_ts/fingerprint";
+import { fingerprint } from "@generated/wsprotocol_ts/ws-protocol";
 import { ScreenController } from "./screen_controller";
-import * as flatbuffers from 'flatbuffers';
 import { Html } from "../utils/common";
 import { html } from "lit-html";
 
@@ -109,7 +108,7 @@ export class FingerprintScreenController extends ScreenController {
             </thead>
             <tbody ${ref(this.tblFingers)}></tbody>
         </table>
-        
+
         <h1>System</h1>
         <div class="buttons">
             <button class="withsvg" @click=${() => this.btnManualAction(0)}>${unsafeSVG(door_open)}<span>Open Door<span></button>
@@ -129,30 +128,26 @@ export class FingerprintScreenController extends ScreenController {
 
 
     public sendRequestDeleteFinger(name: string) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestDeleteFinger, RequestDeleteFinger.createRequestDeleteFinger(b, b.createString(name))))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        const bytes = fingerprint.RequestDeleteFinger.encode({ requestId: 0, name });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private sendRequestStoreFingerTimetable(fingerIndex: number, scheduleName: string) {
         console.log(`sendRequestStoreFingerTimetable fingerIndex=${fingerIndex} scheduleName=${scheduleName}`)
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestStoreFingerSchedule, RequestStoreFingerSchedule.createRequestStoreFingerSchedule(b, fingerIndex, b.createString(scheduleName))))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        const bytes = fingerprint.RequestStoreFingerSchedule.encode({ requestId: 0, fingerIndex, scheduleName });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private sendRequestStoreFingerAction(fingerIndex: number, actionIndex: number) {
         console.log(`sendRequestStoreFingerAction fingerIndex=${fingerIndex} actionIndex=${actionIndex}`)
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestStoreFingerAction, RequestStoreFingerAction.createRequestStoreFingerAction(b, fingerIndex, actionIndex)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        const bytes = fingerprint.RequestStoreFingerAction.encode({ requestId: 0, fingerIndex, actionIndex });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private sendRequestRenameFinger(fingerIndex: number, oldName:string,  newName: string) {
         console.log(`sendRequestRenameFinger fingerIndex=${fingerIndex} newName=${newName}`)
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestRenameFinger, RequestRenameFinger.createRequestRenameFinger(b, b.createString(oldName), b.createString(newName))))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        const bytes = fingerprint.RequestRenameFinger.encode({ requestId: 0, oldName, newName });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private insertParameter(name: string, value: string | number) {
@@ -161,61 +156,59 @@ export class FingerprintScreenController extends ScreenController {
         row.insertCell().textContent = value.toString();
     }
 
-    private insertFinger(f: Finger): void {
+    private insertFinger(f: fingerprint.Finger.Payload): void {
         var row = this.tblFingers.value!.insertRow();
-        this.fingerIndex2tr.set(f.index(), row);
-        this.fingerIndex2name.set(f.index(), f.name()!)
+        this.fingerIndex2tr.set(f.index, row);
+        this.fingerIndex2name.set(f.index, f.name)
 
-        row.insertCell().textContent = f.name();
-        row.insertCell().textContent = String(f.index());
+        row.insertCell().textContent = f.name;
+        row.insertCell().textContent = String(f.index);
         var cell = row.insertCell();
         var timeSelect = (<HTMLSelectElement>Html(cell, "select", []));
-        var fingersScheduleName = f.scheduleName();
+        var fingersScheduleName = f.scheduleName;
         this.scheduleNames.forEach(scheduleName => {
             timeSelect.options.add(new Option(scheduleName, scheduleName, fingersScheduleName==scheduleName, fingersScheduleName==scheduleName));
         });
         (<HTMLInputElement>Html(cell, "input", ["type", "button", "value", `✔Save`])).onclick = () => {
-            this.sendRequestStoreFingerTimetable(f.index()!, timeSelect.value);
+            this.sendRequestStoreFingerTimetable(f.index, timeSelect.value);
         };
 
 
         cell = row.insertCell();
         var actionSelect = (<HTMLSelectElement>Html(cell, "select", []));
-        var fingersActionIndex = f.actionIndex()
+        var fingersActionIndex = f.actionIndex
         index2action.forEach((a,i) => {
             actionSelect.options.add(new Option(a, a, i==fingersActionIndex, i==fingersActionIndex));
         });
         (<HTMLInputElement>Html(cell, "input", ["type", "button", "value", `✔Save`])).onclick = () => {
-            this.sendRequestStoreFingerAction(f.index()!, actionSelect.selectedIndex);
+            this.sendRequestStoreFingerAction(f.index, actionSelect.selectedIndex);
         };
 
 
         cell = row.insertCell();
         (<HTMLInputElement>Html(cell, "input", ["type", "button", "value", `❌Delete`])).onclick = () => {
-            this.sendRequestDeleteFinger(f!.name()!);
+            this.sendRequestDeleteFinger(f.name);
         };
         (<HTMLInputElement>Html(cell, "input", ["type", "button", "value", `✎Rename`])).onclick = () => {
             this.appManagement.ShowDialog(new FilenameDialog("Enter new finger name", (ok, value) => {
                 if (!ok) return;
-                this.sendRequestRenameFinger(f!.index(), f!.name()!, value);
-            }, f.name()!))
+                this.sendRequestRenameFinger(f.index, f.name, value);
+            }, f.name))
         }
     }
 
-    OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
-        if(namespace!=Namespace.Value){
-            console.error(`fingerprint controller namespace problem: ${namespace}!=${Namespace.Value}`)
+    OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void {
+        if(namespaceId!=fingerprint.NAMESPACE_ID){
+            console.error(`fingerprint controller namespace problem: ${namespaceId}!=${fingerprint.NAMESPACE_ID}`)
             return;
         }
-        let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
-        switch (messageWrapper.responseType()) {
-            case Responses.ResponseFingerprintSensorInfo: {
-
-                let m = <ResponseFingerprintSensorInfo>messageWrapper.response(new ResponseFingerprintSensorInfo());
+        switch (messageTypeId) {
+            case fingerprint.ResponseFingerprintSensorInfo.TYPE_ID: {
+                let m = fingerprint.ResponseFingerprintSensorInfo.decode(view, 0);
                 var usedIndices = "";
                 var fingerIndex = 0;
                 for (var bi = 0; bi < 32; bi++) {
-                    var byte = m.libraryUsedIndices()!.v(bi)!
+                    var byte = m.libraryUsedIndices.v[bi];
                     for (var biti = 0; biti < 8; biti++) {
                         if (byte & (1 << biti)) {
                             usedIndices += `${fingerIndex},`
@@ -225,50 +218,45 @@ export class FingerprintScreenController extends ScreenController {
                 }
 
                 this.tblFingerprintSensorInfo.value!.textContent = "";
-                this.insertParameter("Status", m.status());
-                this.insertParameter("Security Level", m.securityLevel());
-                this.insertParameter("Library Size Max", m.librarySizeMax() + " Fingers");
-                this.insertParameter("Library Size Used", m.librarySizeUsed() + " Fingers");
+                this.insertParameter("Status", m.status);
+                this.insertParameter("Security Level", m.securityLevel);
+                this.insertParameter("Library Size Max", m.librarySizeMax + " Fingers");
+                this.insertParameter("Library Size Used", m.librarySizeUsed + " Fingers");
                 this.insertParameter("Library Used Indices", usedIndices);
-                this.insertParameter("Device Address", "0x" + m.deviceAddress().toString(16));
-                this.insertParameter("DataPacketSizeCode", Math.pow(2, 5 + m.dataPacketSizeCode()) + "byte");
-                this.insertParameter("Firmware", m.fwVer()!);
-                this.insertParameter("Algorithm", m.algVer()!);
-                this.insertParameter("Baud Rate", m.baudRateTimes9600() * 9600 + "baud");
+                this.insertParameter("Device Address", "0x" + m.deviceAddress.toString(16));
+                this.insertParameter("DataPacketSizeCode", Math.pow(2, 5 + m.dataPacketSizeCode) + "byte");
+                this.insertParameter("Firmware", m.fwVer);
+                this.insertParameter("Algorithm", m.algVer);
+                this.insertParameter("Baud Rate", m.baudRateTimes9600 * 9600 + "baud");
                 break;
             }
-            case Responses.ResponseFingers:
+            case fingerprint.ResponseFingers.TYPE_ID:
                 {
-                    let m = <ResponseFingers>messageWrapper.response(new ResponseFingers());
+                    let m = fingerprint.ResponseFingers.decode(view, 0);
                     this.tblFingers.value!.textContent = "";
                     this.fingerIndex2name.clear();
                     this.fingerIndex2tr.clear();
-                    this.scheduleNames=[];
-                    for (let i = 0; i < m.scheduleNamesLength(); i++) {
-                        this.scheduleNames.push(m.scheduleNames(i))
-                    }
-                    for (let i = 0; i < m.fingersLength(); i++) {
-                        var f = m.fingers(i);
-                        if (!f) continue;
+                    this.scheduleNames = [...m.scheduleNames];
+                    for (const f of m.fingers) {
                         this.insertFinger(f)
                     }
-                   
+
                     break;
                 }
-            case Responses.ResponseDeleteFinger: {
-                var m = <ResponseDeleteFinger>messageWrapper.response(new ResponseDeleteFinger());
-                var ret = <RET>m.errorcode();
+            case fingerprint.ResponseDeleteFinger.TYPE_ID: {
+                var m = fingerprint.ResponseDeleteFinger.decode(view, 0);
+                var ret = <RET>m.errorcode;
                 if (ret != RET.OK) {
-                    this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Error while deleting Finger ${m.name()}: ${RET[ret]}.`));
+                    this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Error while deleting Finger ${m.name}: ${RET[ret]}.`));
                 } else {
-                    this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Finger ${m.name()} successfully deleted.`));
+                    this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Finger ${m.name} successfully deleted.`));
                     this.sendRequestFingers();
                 }
                 break;
             }
-            case Responses.ResponseEnrollNewFinger: {
-                let m = <ResponseEnrollNewFinger>messageWrapper.response(new ResponseEnrollNewFinger());
-                var ret = <RET>m.errorcode();
+            case fingerprint.ResponseEnrollNewFinger.TYPE_ID: {
+                let m = fingerprint.ResponseEnrollNewFinger.decode(view, 0);
+                var ret = <RET>m.errorcode;
                 console.log(`ResponseEnrollNewFinger: errorcode=${RET[ret]}`);
                 if (ret != RET.OK) {
                     this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Enrollment could not be started: ${RET[ret]}`));
@@ -277,47 +265,47 @@ export class FingerprintScreenController extends ScreenController {
                 }
                 break;
             }
-            case Responses.NotifyEnrollNewFinger: {
-                let m = <NotifyEnrollNewFinger>messageWrapper.response(new NotifyEnrollNewFinger());
-                var ret = <RET>m.errorcode();
-                console.log(`NotifyEnrollNewFinger: step=${m.step()}, name=${m.name()}, errorcode=${RET[ret]}`);
-                if (m.step() < 13) {
-                    var reading = Math.ceil(m.step() / 2)
-                    var collectImage = m.step() % 2 == 1;
+            case fingerprint.NotifyEnrollNewFinger.TYPE_ID: {
+                let m = fingerprint.NotifyEnrollNewFinger.decode(view, 0);
+                var ret = <RET>m.errorcode;
+                console.log(`NotifyEnrollNewFinger: step=${m.step}, name=${m.name}, errorcode=${RET[ret]}`);
+                if (m.step < 13) {
+                    var reading = Math.ceil(m.step / 2)
+                    var collectImage = m.step % 2 == 1;
                     this.appManagement.ShowSnackbar(
                         ret == RET.OK ? Severity.INFO : Severity.WARN,
                         `Reading ${reading}: ${collectImage ? "Collect Image" : "Generate Feature"}: ${RET[ret]}.`);
                 }
-                else if (m.step() == 13) {
+                else if (m.step == 13) {
                     this.appManagement.ShowSnackbar(ret == RET.OK ? Severity.INFO : Severity.WARN, `Repeat fingerprint check: ${RET[ret]}.`);
                 }
-                else if (m.step() == 14) {
+                else if (m.step == 14) {
                     this.appManagement.ShowSnackbar(ret == RET.OK ? Severity.INFO : Severity.WARN, `Merge feature: ${RET[ret]}.`);
                 }
-                else if (m.step() == 15) {
-                    this.appManagement.ShowSnackbar(ret == RET.OK ? Severity.SUCCESS : Severity.WARN, `Fingerprint stored in Sensor with  name "${m.name()}" on index ${m.index()}: ${RET[ret]}.`);
+                else if (m.step == 15) {
+                    this.appManagement.ShowSnackbar(ret == RET.OK ? Severity.SUCCESS : Severity.WARN, `Fingerprint stored in Sensor with  name "${m.name}" on index ${m.index}: ${RET[ret]}.`);
                 }
                 else {
-                    this.appManagement.ShowSnackbar(Severity.ERROR, `Unknown step: ${m.step()}, errorcode: ${RET[ret]}.!`);
+                    this.appManagement.ShowSnackbar(Severity.ERROR, `Unknown step: ${m.step}, errorcode: ${RET[ret]}.!`);
                 }
                 break;
             }
-            case Responses.NotifyFingerDetected: {
-                let m = <NotifyFingerDetected>messageWrapper.response(new NotifyFingerDetected());
-                if (m.errorcode() != 0) {
+            case fingerprint.NotifyFingerDetected.TYPE_ID: {
+                let m = fingerprint.NotifyFingerDetected.decode(view, 0);
+                if (m.errorcode != 0) {
                     this.appManagement.ShowSnackbar(Severity.WARN, `Finger has not been detected.`);
                     console.warn(`Finger has not been detected.`)
                     return;
                 }
-                var fingerName = this.fingerIndex2name.get(m.index());
+                var fingerName = this.fingerIndex2name.get(m.index);
                 if (!fingerName) {
-                    this.appManagement.ShowSnackbar(Severity.SUCCESS, `Unknown Finger ${m.index()} detected with score ${m.score()}.`);
-                    console.info(`Unknown Finger ${m.index()} detected with score ${m.score()}.`);
+                    this.appManagement.ShowSnackbar(Severity.SUCCESS, `Unknown Finger ${m.index} detected with score ${m.score}.`);
+                    console.info(`Unknown Finger ${m.index} detected with score ${m.score}.`);
                     return;
                 }
-                var tr = this.fingerIndex2tr.get(m.index())!;
-                this.appManagement.ShowSnackbar(Severity.SUCCESS, `Finger ${fingerName} (${m.index()}) detected with score ${m.score()}.`);
-                console.info(`Finger ${fingerName} (${m.index()}) detected with score ${m.score()}.`);
+                var tr = this.fingerIndex2tr.get(m.index)!;
+                this.appManagement.ShowSnackbar(Severity.SUCCESS, `Finger ${fingerName} (${m.index}) detected with score ${m.score}.`);
+                console.info(`Finger ${fingerName} (${m.index}) detected with score ${m.score}.`);
                 var storedBgColor = tr.style.backgroundColor;
                 tr.style.backgroundColor = "green";
                 setTimeout(() => { tr.style.backgroundColor = storedBgColor; }, 2000);
@@ -330,9 +318,8 @@ export class FingerprintScreenController extends ScreenController {
     }
 
     private btnManualAction(actionIndex:number) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestFingerActionManually, RequestFingerActionManually.createRequestFingerActionManually(b, 0, actionIndex)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        const bytes = fingerprint.RequestFingerActionManually.encode({ requestId: 0, fingerIndex: 0, actionIndex });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
     btnUpdateFingers() {
         this.sendRequestFingers();
@@ -343,40 +330,33 @@ export class FingerprintScreenController extends ScreenController {
                 return
             }
             console.log(`Send RequestEnrollNewFinger name=${name}`)
-            let b = new flatbuffers.Builder(1024);
-            b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestEnrollNewFinger, RequestEnrollNewFinger.createRequestEnrollNewFinger(b, b.createString(name))))
-            this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+            const bytes = fingerprint.RequestEnrollNewFinger.encode({ requestId: 0, name });
+            this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
         }))
     }
 
     btnFingerprintGetSensorInfo() {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestFingerprintSensorInfo, RequestFingerprintSensorInfo.createRequestFingerprintSensorInfo(b))) 
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
-        
+        const bytes = fingerprint.RequestFingerprintSensorInfo.encode({ requestId: 0 });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
     btnDeleteAll() {
-        this.appManagement.ShowDialog(new OkCancelDialog(Severity.WARN, "Please confirm to DELETE ALL FINGERPRINTS", (ok: boolean) => { 
+        this.appManagement.ShowDialog(new OkCancelDialog(Severity.WARN, "Please confirm to DELETE ALL FINGERPRINTS", (ok: boolean) => {
             if (!ok) return;
-            let b = new flatbuffers.Builder(1024);
-            b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestDeleteAllFingers, RequestDeleteAllFingers.createRequestDeleteAllFingers(b)))
-            this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+            const bytes = fingerprint.RequestDeleteAllFingers.encode({ requestId: 0 });
+            this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
         }))
     }
     btnCancelInstruction() {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestCancelInstruction, RequestCancelInstruction.createRequestCancelInstruction(b)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
+        const bytes = fingerprint.RequestCancelInstruction.encode({ requestId: 0 });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
     OnCreate(): void {
-        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
+        this.appManagement.RegisterNamespace(this, fingerprint.NAMESPACE_ID);
     }
 
     private sendRequestFingers() {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b,Requests.RequestFingers, RequestFingers.createRequestFingers(b)))
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b, 3000);
-       
+        const bytes = fingerprint.RequestFingers.encode({ requestId: 0 });
+        this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     OnFirstStart(): void {

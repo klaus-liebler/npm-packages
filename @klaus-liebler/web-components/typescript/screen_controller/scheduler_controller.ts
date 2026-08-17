@@ -1,7 +1,6 @@
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { Namespace, OneWeekIn15Minutes, OneWeekIn15MinutesData, RequestSchedulerDelete, RequestSchedulerList, RequestSchedulerOpen, RequestSchedulerRename, RequestSchedulerSave, RequestWrapper, Requests, ResponseSchedulerList, ResponseSchedulerListItem, ResponseSchedulerOpen, ResponseWrapper, Responses, Schedule, SunRandom, eSchedule, uSchedule } from "@generated/flatbuffers_ts/scheduler";
+import { scheduler } from "@generated/wsprotocol_ts/ws-protocol";
 import { ScreenController } from "./screen_controller";
-import * as flatbuffers from 'flatbuffers';
 import { TemplateResult, html, render } from "lit-html";
 
 import calendarPlus from "../../svgs/regular/calendar-plus.svg?raw"
@@ -18,7 +17,7 @@ enum MarkingMode{TOGGLE,ON,OFF};
 export abstract class ScheduleItem {
 
     constructor(public readonly name:string, protected readonly type:string, protected readonly appManagement:IAppManagement) { }
-    
+
     public OverallTemplate=()=>html`
     <tr>
         <td class="minwidth">${this.name}</td>
@@ -27,7 +26,7 @@ export abstract class ScheduleItem {
     </tr>
     `
     protected abstract CoreEditTemplate:()=>TemplateResult<1>;
-    public abstract OnResponseSchedulerOpen(m:ResponseSchedulerOpen):void;
+    public abstract OnResponseSchedulerOpen(m:scheduler.ResponseSchedulerOpen.Payload):void;
     public abstract OnCreate():void;
     public abstract SaveToServer():void;
 }
@@ -40,7 +39,7 @@ export class PredefinedSchedule extends ScheduleItem{
         super(name, "Predefined", appManagement);
     }
 
-    public OnResponseSchedulerOpen(_m:ResponseSchedulerOpen):void{
+    public OnResponseSchedulerOpen(_m:scheduler.ResponseSchedulerOpen.Payload):void{
         return;
     }
 
@@ -59,33 +58,30 @@ export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogH
     }
 
     public SaveToServer():void{
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerSave, RequestSchedulerSave.createRequestSchedulerSave(b, 
-                    Schedule.createSchedule(b,
-                        b.createString(this.name), 
-                        uSchedule.SunRandom,
-                        SunRandom.createSunRandom(b,
-                            this.offsetMinutes,
-                            this.randomMinutes
-                        )
-                    )
-                )
-            ),
-        );
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
+        const bytes = scheduler.RequestSchedulerSave.encode({
+            requestId: 0,
+            payload: {
+                classId: scheduler.Schedule.CLASS_ID,
+                name: this.name,
+                schedule: {
+                    classId: scheduler.SunRandom.CLASS_ID,
+                    offsetMinutes: this.offsetMinutes,
+                    randomMinutes: this.randomMinutes,
+                },
+            },
+        });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
-    public OnResponseSchedulerOpen(m:ResponseSchedulerOpen):void{
-       
-        if(m.payload()!.scheduleType()!=uSchedule.SunRandom)
+    public OnResponseSchedulerOpen(m:scheduler.ResponseSchedulerOpen.Payload):void{
+        if(m.payload.schedule.classId!=scheduler.SunRandom.CLASS_ID)
             return;
-        if(m.payload()!.name()!=this.name){
-            console.error("m.payload().name()!=this.name")
+        if(m.payload.name!=this.name){
+            console.error("m.payload.name!=this.name")
             return;
         }
-        var rso = <SunRandom>m.payload()!.schedule(new SunRandom())
-        this.offsetMinutes=rso.offsetMinutes();
-        this.randomMinutes=rso.randomMinutes();
+        this.offsetMinutes=m.payload.schedule.offsetMinutes;
+        this.randomMinutes=m.payload.schedule.randomMinutes;
         this.appManagement.ShowDialog(new SunRandomScheduleEditorDialog(this.name, this.offsetMinutes, this.randomMinutes, this))
     }
 
@@ -104,25 +100,19 @@ export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogH
     }
 
     private btnEditClicked() {
-        let b = new flatbuffers.Builder(256);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerOpen, RequestSchedulerOpen.createRequestSchedulerOpen(b, b.createString(this.name), eSchedule.SunRandom)));    
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);    
-        
+        const bytes = scheduler.RequestSchedulerOpen.encode({ requestId: 0, name: this.name, type: scheduler.ScheduleType.SUN_RANDOM });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnDeleteClicked() {
-        let b = new flatbuffers.Builder(256);   
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerDelete, RequestSchedulerDelete.createRequestSchedulerDelete(b, b.createString(this.name))));    
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);    
-        
+        const bytes = scheduler.RequestSchedulerDelete.encode({ requestId: 0, name: this.name });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private handleRenameDialog(ok:boolean, newName:string){
         if(!ok) return;
-        let b = new flatbuffers.Builder(256);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerRename, RequestSchedulerRename.createRequestSchedulerRename(b, b.createString(this.name), b.createString(newName))));   
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b); 
-        
+        const bytes = scheduler.RequestSchedulerRename.encode({ requestId: 0, oldName: this.name, newName });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnRenameClicked() {
@@ -134,23 +124,21 @@ export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogH
 
 export class OneWeekIn15MinutesSchedule extends ScheduleItem implements iWeeklyScheduleDialogHandler{
     private value:Array<number>=[]
-    
+
     constructor(name:string, appManagement:IAppManagement){
         super(name, "OneWeekIn15Minutes", appManagement);
     }
-    
-       
 
-    public OnResponseSchedulerOpen(m:ResponseSchedulerOpen|null):void{
-        if(m!.payload()!.scheduleType()!=uSchedule.OneWeekIn15Minutes)
+
+
+    public OnResponseSchedulerOpen(m:scheduler.ResponseSchedulerOpen.Payload):void{
+        if(m.payload.schedule.classId!=scheduler.OneWeekIn15Minutes.CLASS_ID)
             return;
-        if(m!.payload()!.name()!=this.name){
-            console.error("m.payload().name()!=this.name")
+        if(m.payload.name!=this.name){
+            console.error("m.payload.name!=this.name")
             return;
         }
-        this.value = new Array<number>(84);
-        var rso = <OneWeekIn15Minutes>m!.payload()!.schedule(new OneWeekIn15Minutes())
-        for(var i=0;i<84;i++){this.value[i]=rso.data()!.v(i)!}
+        this.value = [...m.payload.schedule.data.v];
         this.appManagement.ShowDialog(new WeeklyScheduleDialog(`Weekly Schedule ${this.name}`, this.value, this, null));
     }
 
@@ -167,42 +155,34 @@ export class OneWeekIn15MinutesSchedule extends ScheduleItem implements iWeeklyS
     }
 
     public SaveToServer():void{
-        let b = new flatbuffers.Builder(1024)
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerSave, 
-            RequestSchedulerSave.createRequestSchedulerSave(b, Schedule.createSchedule(b,
-                b.createString(this.name), 
-                uSchedule.OneWeekIn15Minutes,
-                OneWeekIn15Minutes.createOneWeekIn15Minutes(b,
-                    OneWeekIn15MinutesData.createOneWeekIn15MinutesData(b, this.value)
-                    )
-                )
-            )
-        )
-        );
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);
+        const bytes = scheduler.RequestSchedulerSave.encode({
+            requestId: 0,
+            payload: {
+                classId: scheduler.Schedule.CLASS_ID,
+                name: this.name,
+                schedule: {
+                    classId: scheduler.OneWeekIn15Minutes.CLASS_ID,
+                    data: { v: this.value },
+                },
+            },
+        });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnEditClicked(_e:MouseEvent){
-
-        let b = new flatbuffers.Builder(256);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerOpen, RequestSchedulerOpen.createRequestSchedulerOpen(b, b.createString(this.name), eSchedule.OneWeekIn15Minutes)));   
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);     
-        
+        const bytes = scheduler.RequestSchedulerOpen.encode({ requestId: 0, name: this.name, type: scheduler.ScheduleType.ONE_WEEK_IN_15_MINUTES });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnDeleteClicked(_e:MouseEvent) {
-        let b = new flatbuffers.Builder(256);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerDelete, RequestSchedulerDelete.createRequestSchedulerDelete(b, b.createString(this.name))));    
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);     
-        
+        const bytes = scheduler.RequestSchedulerDelete.encode({ requestId: 0, name: this.name });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private handleRenameDialog(ok:boolean, newName:string){
         if(!ok) return;
-        let b = new flatbuffers.Builder(256);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerRename, RequestSchedulerRename.createRequestSchedulerRename(b, b.createString(this.name), b.createString(newName))));  
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);   
-        
+        const bytes = scheduler.RequestSchedulerRename.encode({ requestId: 0, oldName: this.name, newName });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnRenameClicked(_e:MouseEvent) {
@@ -220,7 +200,7 @@ export class CreateNewScheduleDialog extends DialogController {
 
     constructor(private alreadyUsedScheduleNames: Array<string>, private m:IAppManagement, protected handler: ((ok: boolean, scheduleItem: ScheduleItem|null) => any) | undefined) {
         super();
-        
+
     }
 
     protected cancelHandler() {
@@ -239,7 +219,7 @@ export class CreateNewScheduleDialog extends DialogController {
                 this.handler?.(true, new SunRandomSchedule(this.inputName.value!.value, this.m));
                 break;
         }
-        
+
     }
 
     protected backdropClickedHandler(e: MouseEvent) {
@@ -269,10 +249,10 @@ export class CreateNewScheduleDialog extends DialogController {
             // Escape special characters in each word
             return word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         });
-    
+
         // Join the escaped words with '|' and wrap in a negative lookahead
         const pattern = `^(?!.*\\b(?:${escapedWords.join('|')})\\b).*$`
-      
+
         return html`
     <dialog @cancel=${() => this.cancelHandler()} @click=${(e: MouseEvent) => this.backdropClickedHandler(e)} ${ref(this.dialog)}>
         <header>
@@ -342,8 +322,8 @@ export interface iSunRandomDialogHandler{
 }
 
 export class WeeklyScheduleDialog extends DialogController {
-    
-    
+
+
     constructor(private header:string, private initialValue: Array<number>|null, private handler:iWeeklyScheduleDialogHandler, private referenceHandle:any){
         super()
     }
@@ -353,7 +333,7 @@ export class WeeklyScheduleDialog extends DialogController {
     private tblBody:Ref<HTMLTableSectionElement>= createRef();
 
     protected okHandler() {
-        
+
         var arr = new Array<number>(84);
         for(const d of [6,5,4,3,2,1,0]){
             for(var hour=0;hour<24;hour+=2){
@@ -372,7 +352,7 @@ export class WeeklyScheduleDialog extends DialogController {
         this.dialog.value!.close("Ok");
         this.handler.handleWeeklyScheduleDialog(true, this.referenceHandle, arr);
     }
-   
+
     public Show(){
         if(this.initialValue){
             console.log(`Dialog opened. Value=${numberArray2HexString(this.initialValue)}`)
@@ -400,7 +380,7 @@ export class WeeklyScheduleDialog extends DialogController {
         e.preventDefault(); // Verhindert die Textauswahl
     }
 
-    
+
 
     private tdMouseenter(e: MouseEvent) {
         //console.log(`mouseenter @ ${(<HTMLElement>e.target).innerText}`)
@@ -423,7 +403,7 @@ export class WeeklyScheduleDialog extends DialogController {
     }
 
     private copy(sourceDay:number, destinationDays:Array<number>){
-        
+
         for(var fifteen_minutes_slot=0;fifteen_minutes_slot<4*24;fifteen_minutes_slot++){
             var sourceMarked=this.isSelected(sourceDay, fifteen_minutes_slot);
             for(const d of destinationDays){
@@ -433,7 +413,7 @@ export class WeeklyScheduleDialog extends DialogController {
     }
 
     private setAll(selected:boolean) {
-        
+
         for(var d=0;d<weekdays.length;d++){
             for(var fifteen_minutes_slot=0;fifteen_minutes_slot<4*24;fifteen_minutes_slot++){
                 this.setSelected(d, fifteen_minutes_slot, selected);
@@ -460,10 +440,9 @@ export class WeeklyScheduleDialog extends DialogController {
         this.handler.handleWeeklyScheduleDialog(false, this.referenceHandle, null);
     }
 
-    
 
-    
-    
+
+
 
     public Template = () => {
         const weekdayTemplate = (_day_name:string, _day_index:number) => html`${[...Array(96)].map((_name, _num) =>
@@ -529,7 +508,7 @@ export class SchedulerScreenController extends ScreenController {
                 itemTemplates.push(i.OverallTemplate())
             }
             render(itemTemplates, this.tBodySchedules!.value!);
-            
+
         }));
     }
 
@@ -543,12 +522,12 @@ export class SchedulerScreenController extends ScreenController {
     public Template = () =>{
         return html`
     <h1>Schedule Definitions</h1>
-        
+
         <div class="buttons">
             <button class="withsvg" @click=${() => this.btnNew()}>${unsafeSVG(calendarPlus)}<span>New<span></button>
             <button class="withsvg" @click=${() => this.btnUpdate()}>${unsafeSVG(rotate)}<span>Update List<span></button>
         </div>
-        
+
 
         <table class="schedules">
             <thead>
@@ -571,33 +550,29 @@ export class SchedulerScreenController extends ScreenController {
 
 
     public sendRequestDeleteSchedule(name: string) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerDelete, RequestSchedulerDelete.createRequestSchedulerDelete(b, b.createString(name))));
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b); 
-        
+        const bytes = scheduler.RequestSchedulerDelete.encode({ requestId: 0, name });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
-    OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void {
-         if(namespace!=Namespace.Value) return;
-        let messageWrapper = ResponseWrapper.getRootAsResponseWrapper(bb);
+    OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void {
+        if(namespaceId!=scheduler.NAMESPACE_ID) return;
 
-        switch (messageWrapper.responseType()) {
-            case Responses.ResponseSchedulerList:{
+        switch (messageTypeId) {
+            case scheduler.ResponseSchedulerList.TYPE_ID:{
                 var itemTemplates:Array<TemplateResult<1>>=[];
-                var list = <ResponseSchedulerList>messageWrapper.response(new ResponseSchedulerList())
-                for(var i=0;i<list.itemsLength();i++){
-                    var item = list.items(i)!;
+                var list = scheduler.ResponseSchedulerList.decode(view, 0);
+                for(const item of list.items){
                     this.processItem(item, itemTemplates);
                 }
                 render(itemTemplates, this.tBodySchedules!.value!);
                 break;
             }
-            case Responses.ResponseSchedulerOpen:{
-                var open = <ResponseSchedulerOpen>messageWrapper.response(new ResponseSchedulerOpen())
-                if(!this.name2item.has(open.payload()!.name()!)){
-                    console.warn(`OpenMessage for ${open.payload()!.name()}, but this is not contained in [${Array.from(this.name2item.keys()).join(",")}].`)
+            case scheduler.ResponseSchedulerOpen.TYPE_ID:{
+                var open = scheduler.ResponseSchedulerOpen.decode(view, 0);
+                if(!this.name2item.has(open.payload.name)){
+                    console.warn(`OpenMessage for ${open.payload.name}, but this is not contained in [${Array.from(this.name2item.keys()).join(",")}].`)
                 }else{
-                    var o =this.name2item.get(open.payload()!.name()!)!
+                    var o =this.name2item.get(open.payload.name)!
                     o.OnResponseSchedulerOpen(open);
                 }
                 break;
@@ -605,39 +580,37 @@ export class SchedulerScreenController extends ScreenController {
             default:
                 break;
         }
-        
+
     }
-    processItem(item: ResponseSchedulerListItem, itemTemplates: TemplateResult<1>[]) {
+    processItem(item: ({ classId: typeof scheduler.SchedulerListItem.CLASS_ID } & scheduler.SchedulerListItem.Payload), itemTemplates: TemplateResult<1>[]) {
         var elem:ScheduleItem|null=null;
-        switch (item.type()) {
-            case eSchedule.OneWeekIn15Minutes:{
-                elem= new OneWeekIn15MinutesSchedule(item.name()!, this.appManagement)
+        switch (item.type) {
+            case scheduler.ScheduleType.ONE_WEEK_IN_15_MINUTES:{
+                elem= new OneWeekIn15MinutesSchedule(item.name, this.appManagement)
                 break;
             }
-            case eSchedule.SunRandom:{
-                elem= new SunRandomSchedule(item.name()!, this.appManagement)
+            case scheduler.ScheduleType.SUN_RANDOM:{
+                elem= new SunRandomSchedule(item.name, this.appManagement)
                 break;
             }
-            case eSchedule.Predefined:{
-                elem= new PredefinedSchedule(item.name()!, this.appManagement)
+            case scheduler.ScheduleType.PREDEFINED:{
+                elem= new PredefinedSchedule(item.name, this.appManagement)
                 break;
             }
             default:
                 return;
         }
-        this.name2item.set(item.name()!, elem);
+        this.name2item.set(item.name, elem);
         itemTemplates.push(elem.OverallTemplate())
     }
 
     private onStart_or_onRestart_or_onUpdateClicked(){
-        let b = new flatbuffers.Builder(256);
-        b.finish(RequestWrapper.createRequestWrapper(b, Requests.RequestSchedulerList, RequestSchedulerList.createRequestSchedulerList(b)));
-        this.appManagement.SendFinishedBuilder(Namespace.Value, b);     
-        
+        const bytes = scheduler.RequestSchedulerList.encode({ requestId: 0 });
+        this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
-    
+
     OnCreate(): void {
-        this.appManagement.RegisterWebsocketMessageNamespace(this, Namespace.Value);
+        this.appManagement.RegisterNamespace(this, scheduler.NAMESPACE_ID);
     }
 
 

@@ -1,4 +1,4 @@
-import * as sensact from "@generated/flatbuffers_ts/sensact"
+import { sensact } from "@generated/wsprotocol_ts/ws-protocol"
 
 export function GetTechnologyFromApplicationId(id: sensact.ApplicationId){
     return sensact.ApplicationId[id].split("_").filter(a=>a.length>0)[0]

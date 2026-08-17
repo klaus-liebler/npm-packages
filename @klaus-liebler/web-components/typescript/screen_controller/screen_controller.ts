@@ -1,6 +1,5 @@
-import * as flatbuffers from 'flatbuffers';
 import { TemplateResult, html } from "lit-html";
-import { IAppManagement, IWebsocketMessageListener } from "../utils/interfaces";
+import { IAppManagement, IMessageListener } from "../utils/interfaces";
 
 export enum ControllerState {
     CREATED,
@@ -8,7 +7,7 @@ export enum ControllerState {
     PAUSED,
 }
 
-export abstract class ScreenController implements IWebsocketMessageListener {
+export abstract class ScreenController implements IMessageListener {
     private state=ControllerState.CREATED
     public get State(): ControllerState {
         return this.state; 
@@ -49,7 +48,7 @@ export abstract class ScreenController implements IWebsocketMessageListener {
     protected abstract OnFirstStart(): void;
     protected abstract OnRestart(): void;
     abstract OnPause(): void;
-    abstract OnMessage(namespace:number, bb: flatbuffers.ByteBuffer): void;
+    abstract OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void;
     abstract Template():TemplateResult<1>
     SetParameter(_params:RegExpMatchArray):void{}
 }
@@ -58,8 +57,8 @@ export class DefaultScreenController extends ScreenController {
     
     public Template = () => html`<span>DefaultScreenController</span>`
    
-    OnMessage(_namespace:number, _data: flatbuffers.ByteBuffer): void {
-        
+    OnMessage(_namespaceId: number, _messageTypeId: number, _view: DataView): void {
+
     }
 
     OnCreate(): void {

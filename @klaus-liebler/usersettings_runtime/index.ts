@@ -1,7 +1,15 @@
 import { TemplateResult, html} from 'lit-html';
-import { BooleanSetting, EnumSetting, IntegerSetting, Setting, SettingWrapper, StringSetting } from '@generated/flatbuffers_ts/usersettings';
-import * as flatbuffers from 'flatbuffers';
+import { usersettings } from '@generated/wsprotocol_ts/ws-protocol';
 import { Ref, createRef, ref } from 'lit-html/directives/ref.js';
+
+// Ein Element von RequestSetUserSettings.settings/ResponseGetUserSettings.settings -- ersetzt das
+// vormalige Flatbuffers-'SettingWrapper' (settingKey + verschachtelte 4-gliedrige Setting-Union) durch
+// vier eigenstaendige, getaggte Wrapper-Klassen (s. ws-protocol/usersettings.cs).
+export type SettingElement =
+    | ({ classId: typeof usersettings.StringSettingWrapper.CLASS_ID } & usersettings.StringSettingWrapper.Payload)
+    | ({ classId: typeof usersettings.IntegerSettingWrapper.CLASS_ID } & usersettings.IntegerSettingWrapper.Payload)
+    | ({ classId: typeof usersettings.BooleanSettingWrapper.CLASS_ID } & usersettings.BooleanSettingWrapper.Payload)
+    | ({ classId: typeof usersettings.EnumSettingWrapper.CLASS_ID } & usersettings.EnumSettingWrapper.Payload);
 
 export enum ItemState {
     NODATA,
@@ -72,7 +80,7 @@ export abstract class ConfigItemRT {
                 break;
         }
     }
-    
+
     public OverallTemplate=()=>html`
     <tr>
         <td style='width:1%; white-space:nowrap'><label>${this.displayName}</label></td>
@@ -80,8 +88,8 @@ export abstract class ConfigItemRT {
         <td>${this.CoreInputTemplate()}</td>
     </tr>
     `
-    abstract WriteToFlatbufferBufferAndReturnSettingWrapperOffset(b: flatbuffers.Builder): number;
-    abstract ReadFlatbuffersObjectAndSetValueInDom(sw: SettingWrapper): boolean;
+    abstract BuildSettingsElement(): SettingElement;
+    abstract ReadSettingsElementAndSetValueInDom(el: SettingElement): boolean;
     abstract HasAChangedValue(): boolean;
     protected abstract CoreInputTemplate:()=>TemplateResult<1>;
     protected abstract btnResetClicked():void;
@@ -103,12 +111,12 @@ export class IntegerItem extends ConfigItem{
 }
 
 export class BooleanItem extends ConfigItem{
-    
+
     constructor(displayName:string, public readonly defaultValue:boolean=false, key:string|null=null){
         super(displayName, key);
     }
     public BuildConfigItemRt=(groupName:string, callback: ValueUpdater)=> new BooleanItemRT(groupName, this.displayName, this.defaultValue, this.Key, callback);
-    
+
 
 }
 
@@ -122,28 +130,25 @@ export class EnumItem extends ConfigItem{
 export class StringItemRT extends ConfigItemRT {
     private previousValue:string;
     protected CoreInputTemplate=()=>html`<input ${ref(this.inputElement)} @input=${()=>this.oninput()} style='width:100%; max-width: 200px;' type="text" value=${this.defaultValue} pattern=${this.regex.source}/>`
-    
+
     HasAChangedValue(): boolean {
         return this.inputElement.value!.value != this.previousValue
     }
-   
-    WriteToFlatbufferBufferAndReturnSettingWrapperOffset(b: flatbuffers.Builder): number {
-        let settingOffset = StringSetting.createStringSetting(b, b.createString(this.inputElement.value!.value));
-        return SettingWrapper.createSettingWrapper(b, b.createString(this.Key), Setting.StringSetting, settingOffset);
+
+    BuildSettingsElement(): SettingElement {
+        return { classId: usersettings.StringSettingWrapper.CLASS_ID, settingKey: this.Key!, value: this.inputElement.value!.value };
     }
-    ReadFlatbuffersObjectAndSetValueInDom(sw: SettingWrapper): boolean {
-        if (sw.settingType() != Setting.StringSetting) return false;
-        let s = <StringSetting>sw.setting(new StringSetting());
-        if (!s.value()){console.warn("Returned a null value for string "+this.Key); true;}
-        if (!this.regex.test(s.value()!)){console.warn(`Regex ${this.regex} does not accept ${s.value()}`);  return false;}
-        this.inputElement.value!.value = s.value()!;
-        this.previousValue = s.value()!;
+    ReadSettingsElementAndSetValueInDom(el: SettingElement): boolean {
+        if (el.classId != usersettings.StringSettingWrapper.CLASS_ID) return false;
+        if (!this.regex.test(el.value)){console.warn(`Regex ${this.regex} does not accept ${el.value}`);  return false;}
+        this.inputElement.value!.value = el.value;
+        this.previousValue = el.value;
         this.itemState=ItemState.SYNCHRONIZED;
         return true;
     }
 
     constructor(protected readonly groupName:string, displayName: string, public readonly defaultValue: string = "", public readonly regex: RegExp = /.*/, key:string|null=null, protected readonly callback: ValueUpdater) {
-        super(groupName, displayName, key, callback) 
+        super(groupName, displayName, key, callback)
         this.previousValue=defaultValue;
     }
 
@@ -156,7 +161,7 @@ export class StringItemRT extends ConfigItemRT {
         let fireChangeEvent= this.HasAChangedValue();
         this.inputElement.value!.value = this.previousValue
         this.itemState=ItemState.SYNCHRONIZED;
-        if(fireChangeEvent)this.callback.UpdateString(this.groupName, this, this.inputElement.value!.value); 
+        if(fireChangeEvent)this.callback.UpdateString(this.groupName, this, this.inputElement.value!.value);
     }
 }
 
@@ -169,17 +174,13 @@ export class IntegerItemRT extends ConfigItemRT {
         return this.inputElement.value!.value != this.previousValue.toString()
     }
 
-    WriteToFlatbufferBufferAndReturnSettingWrapperOffset(b: flatbuffers.Builder): number {
-        let settingOffset = IntegerSetting.createIntegerSetting(b, parseInt(this.inputElement.value!.value));
-        return SettingWrapper.createSettingWrapper(b, b.createString(this.Key), Setting.IntegerSetting, settingOffset);
+    BuildSettingsElement(): SettingElement {
+        return { classId: usersettings.IntegerSettingWrapper.CLASS_ID, settingKey: this.Key!, value: parseInt(this.inputElement.value!.value) };
     }
-    ReadFlatbuffersObjectAndSetValueInDom(sw: SettingWrapper): boolean {
-        if (sw.settingType() != Setting.IntegerSetting) return false;
-        let s = <IntegerSetting>sw.setting(new IntegerSetting());
-        if (!s) return true;
-        if (!s.value()) return true;
-        this.inputElement.value!.value = s.value()!.toString();
-        this.previousValue = s.value()!;
+    ReadSettingsElementAndSetValueInDom(el: SettingElement): boolean {
+        if (el.classId != usersettings.IntegerSettingWrapper.CLASS_ID) return false;
+        this.inputElement.value!.value = el.value.toString();
+        this.previousValue = el.value;
         this.itemState=ItemState.SYNCHRONIZED;
         return true;
     }
@@ -197,7 +198,7 @@ export class IntegerItemRT extends ConfigItemRT {
         let fireChangeEvent= this.HasAChangedValue();
         this.inputElement.value!.value = this.previousValue.toString()
         this.itemState=ItemState.SYNCHRONIZED;
-        if(fireChangeEvent)this.callback.UpdateInteger(this.groupName, this, parseInt(this.inputElement.value!.value)); 
+        if(fireChangeEvent)this.callback.UpdateInteger(this.groupName, this, parseInt(this.inputElement.value!.value));
     }
 }
 
@@ -214,23 +215,20 @@ export class BooleanItemRT extends ConfigItemRT {
         let fireChangeEvent= this.HasAChangedValue();
         (<HTMLInputElement>this.inputElement.value!).checked = this.previousValue;
         this.itemState=ItemState.SYNCHRONIZED;
-        if(fireChangeEvent)this.callback.UpdateBoolean(this.groupName, this, (<HTMLInputElement>this.inputElement.value!).checked); 
+        if(fireChangeEvent)this.callback.UpdateBoolean(this.groupName, this, (<HTMLInputElement>this.inputElement.value!).checked);
     }
-    
+
     HasAChangedValue(): boolean {
         return (<HTMLInputElement>this.inputElement.value!).checked != this.previousValue;
     }
 
-    WriteToFlatbufferBufferAndReturnSettingWrapperOffset(b: flatbuffers.Builder): number {
-        let settingOffset = BooleanSetting.createBooleanSetting(b, (<HTMLInputElement>this.inputElement.value!).checked);
-        return SettingWrapper.createSettingWrapper(b, b.createString(this.Key), Setting.BooleanSetting, settingOffset);
+    BuildSettingsElement(): SettingElement {
+        return { classId: usersettings.BooleanSettingWrapper.CLASS_ID, settingKey: this.Key!, value: (<HTMLInputElement>this.inputElement.value!).checked };
     }
-    ReadFlatbuffersObjectAndSetValueInDom(sw: SettingWrapper): boolean {
-        if (sw.settingType() != Setting.BooleanSetting) return false;
-        let s = <BooleanSetting>sw.setting(new BooleanSetting());
-        if (!s) return true;
-        (<HTMLInputElement>this.inputElement.value!).checked = s.value();
-        this.previousValue = s.value();
+    ReadSettingsElementAndSetValueInDom(el: SettingElement): boolean {
+        if (el.classId != usersettings.BooleanSettingWrapper.CLASS_ID) return false;
+        (<HTMLInputElement>this.inputElement.value!).checked = el.value;
+        this.previousValue = el.value;
         this.itemState=ItemState.SYNCHRONIZED;
         return true;
     }
@@ -252,16 +250,13 @@ export class EnumItemRT extends ConfigItemRT {
         return (<HTMLSelectElement>this.inputElement.value).selectedIndex != this.previousValue;
     }
 
-    WriteToFlatbufferBufferAndReturnSettingWrapperOffset(b: flatbuffers.Builder): number {
-        let settingOffset = EnumSetting.createEnumSetting(b, (<HTMLSelectElement>this.inputElement.value).selectedIndex);
-        return SettingWrapper.createSettingWrapper(b, b.createString(this.Key), Setting.EnumSetting, settingOffset);
+    BuildSettingsElement(): SettingElement {
+        return { classId: usersettings.EnumSettingWrapper.CLASS_ID, settingKey: this.Key!, value: (<HTMLSelectElement>this.inputElement.value).selectedIndex };
     }
-    ReadFlatbuffersObjectAndSetValueInDom(sw: SettingWrapper): boolean {
-        if (sw.settingType() != Setting.EnumSetting) return false;
-        let s = <EnumSetting>sw.setting(new EnumSetting());
-        if (!s) return true;
-        (<HTMLSelectElement>this.inputElement.value).selectedIndex = s.value();
-        this.previousValue=s.value();
+    ReadSettingsElementAndSetValueInDom(el: SettingElement): boolean {
+        if (el.classId != usersettings.EnumSettingWrapper.CLASS_ID) return false;
+        (<HTMLSelectElement>this.inputElement.value).selectedIndex = el.value;
+        this.previousValue=el.value;
         this.itemState=ItemState.SYNCHRONIZED;
         return true;
     }
