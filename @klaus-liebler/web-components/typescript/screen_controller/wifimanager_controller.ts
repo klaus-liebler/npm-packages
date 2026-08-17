@@ -5,7 +5,7 @@ import { wifimanager } from "@generated/wsprotocol_ts/ws-protocol";
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
-import { OkCancelDialog, OkDialog, PasswordDialog } from "../dialog_controller";
+import { OkCancelDialog, OkDialog, PasswordDialog, PermanentDialog } from "../dialog_controller";
 import { ip4_2_string, Severity } from "@klaus-liebler/commons";
 
 
@@ -228,7 +228,15 @@ export class WifimanagerController extends ScreenController {
             this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, "Connection attempt failed! "));
         }else{
             console.info(`Got connection! to ${this.ssidSta} with ip ${this.ipSta} netmask ${this.netmaskSta} gateway ${this.gatewaySta}`);
-            this.appManagement.ShowDialog(new OkDialog(Severity.SUCCESS, `Connection to ${r.ssid} was successful. `));
+            // Das Board trennt seinen eigenen Access Point kurz nach einer erfolgreichen
+            // STA-Verbindung (s. webmanager.hh) -- die aktuelle, AP-basierte Websocket-Verbindung
+            // wird dadurch gleich ohnehin ungueltig. Ein OK-Button waere irrefuehrend (es gibt
+            // nichts mehr sinnvoll fortzusetzen, ein Klick fuehrt nur zu einem toten Spinner) --
+            // deshalb PermanentDialog (nicht schliessbar) statt OkDialog, und die Websocket-
+            // Verbindung wird sofort bewusst geschlossen (Code 1000, wird von
+            // AppController.onclose stillschweigend ignoriert statt als Fehler behandelt).
+            this.appManagement.ShowDialog(new PermanentDialog(Severity.SUCCESS, "Erfolg", `Verbindung zu "${r.ssid}" war erfolgreich. Bitte verbinden Sie sich jetzt mit dem WLAN-Netz "${r.ssid}" und rufen Sie dieses Geraet unter dem Hostnamen "${this.hostname}" auf.`));
+            this.appManagement.CloseConnection();
         }
     }
 

@@ -169,6 +169,10 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     return controllerObject
   }
 
+  public CloseConnection(): void {
+    this.socket?.close(1000, "Client requested close");
+  }
+
   private setModal(state: boolean) {
     this.modalSpinner.value!.style.display = state ? "flex" : "none";
   }
@@ -195,13 +199,18 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     return storedUsername || '--unknown--';
   }
 
-  private logout() {
-    // Cookies löschen (Session)
-    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; HttpOnly';
-    document.cookie = 'username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+  private async logout() {
+    // Das Session-Cookie ist bewusst HttpOnly (Schutz vor Diebstahl per XSS) -- 'document.cookie'
+    // kann es deshalb NICHT loeschen, das war bisher der eigentliche Bug (Session blieb serverseitig
+    // gueltig, ein Reload auf '/' zeigte wieder die SPA statt der Login-Maske). Einziger Weg: der
+    // Server selbst invalidiert die Session und schickt ein abgelaufenes Set-Cookie (s. POST /logout
+    // in webmanager.hh).
+    try {
+      await fetch('/logout', { method: 'POST' });
+    } catch (error) {
+      console.error(`Logout request failed: ${error}`);
+    }
     localStorage.removeItem('username');
-    
-    // Zur Login-Seite umleiten
     console.log('User logged out');
     window.location.href = '/';
   }

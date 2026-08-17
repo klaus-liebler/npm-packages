@@ -41,4 +41,9 @@ export interface IAppManagement {
     SendFrame(namespaceId: number, bytes: Uint8Array, maxLockingTimeMs?: number): void;
     ShowSnackbar(severity: Severity, text: string): void;
     ShowDialog(dialogController: DialogController): void;
+    // Schliesst die aktuelle Websocket-Verbindung bewusst (Code 1000) -- z.B. wenn der Server
+    // ankuendigt, seinen eigenen Access Point gleich abzuschalten (erfolgreicher WifiConnect):
+    // ein "normal closure" wird von AppController.onclose stillschweigend ignoriert (kein
+    // Fehler-Snackbar, kein Dauerspinner), im Gegensatz zu einem unerwarteten Verbindungsabbruch.
+    CloseConnection(): void;
 };

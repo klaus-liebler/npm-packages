@@ -85,6 +85,28 @@ export class PasswordDialog extends SimpleDialogWithInputController {
     protected mainTemplate() { return html`<p> ${this.messageText}</p><p><input ${ref(this.inputElement)} @keyup=${(e: KeyboardEvent) => this.inpTextKeyup(e)} type="password"></input></p>` }
 }
 
+// Absichtlich NICHT schliessbar (kein OK-Button, kein Header-"x", Escape/Backdrop-Klick werden
+// ignoriert) -- fuer Meldungen, nach denen eine Interaktion mit der aktuellen Seite ohnehin
+// sinnlos ist (z.B. WLAN-Verbindungswechsel: die aktuelle Websocket-Verbindung wird gleich
+// ungueltig, ein Reload/Zurueckklicken fuehrt nur zu einem toten Spinner statt zu etwas Nuetzlichem).
+export class PermanentDialog extends DialogController {
+    constructor(private severity: Severity, private headingStr: string, private messageText: string) {
+        super()
+    }
+
+    public Template() {
+        return html`
+    <dialog class="simple" @cancel=${(e: Event) => e.preventDefault()} ${ref(this.dialog)}>
+        <header>
+            <span>${this.headingStr}</span>
+        </header>
+        <main>
+            <section><span class=${severity2class(this.severity)}>${severity2symbol(this.severity)}</span></section>
+            <section><p>${this.messageText}</p></section>
+        </main>
+    </dialog>`}
+}
+
 export class OkDialog extends SimpleDialogController {
     constructor(severity: Severity, private messageText: string, handler?: ((ok: boolean, value: string) => any)) {
         super(Severity[severity], severity, handler)
