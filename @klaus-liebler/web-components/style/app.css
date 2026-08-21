@@ -300,10 +300,89 @@ div.buttons {
   margin: 10px 0;
 }
 
+/* Vereinheitlichte Button-Formatierung fuer die Screen-Controller-Inhalte (body > main).
+   <button> und <input type="button"> hatten bisher ueberhaupt keine eigene Groesse/Formatierung
+   (nackter Browser-Default) -- dadurch wirkten sie insgesamt zu klein und je nachdem, ob ein Icon
+   dabei war (button.withsvg) oder nicht, deutlich unterschiedlich gross/formatiert. Bewusst auf
+   "body > main" beschraenkt, NICHT global: Dialoge (dialog.css) und der Logout-Button im Header
+   (.logout-btn) haben schon eine eigene, in sich konsistente Formatierung, die hier nicht
+   ueberschrieben werden soll. */
+body > main button,
+body > main input[type="button"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background-color: #f2f2f2;
+  color: #000;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.1s ease-out;
+}
+
+body > main button:hover,
+body > main input[type="button"]:hover {
+  background-color: #e6e6e6;
+  border-color: #888;
+}
+
+body > main button:active,
+body > main input[type="button"]:active {
+  transform: scale(0.97);
+}
+
+body > main button:disabled,
+body > main input[type="button"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* input[type="file"] rendert seinen "Datei auswaehlen"-Teil als eigenes Pseudo-Element (kein
+   normales <button>/<input type="button">, deshalb von der Regel oben nicht erfasst) -- dasselbe
+   Formatierungsziel (konsistent, nicht zu klein), 1:1 dieselben Werte wie oben. Modernes
+   ::file-selector-button (Standard) UND das aeltere WebKit-Pendant fuer Chromium-Versionen, die
+   den Standard-Namen noch nicht kennen. */
+body > main input[type="file"] {
+  font: inherit;
+  font-size: 15px;
+}
+
+body > main input[type="file"]::file-selector-button,
+body > main input[type="file"]::-webkit-file-upload-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-right: 10px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background-color: #f2f2f2;
+  color: #000;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.1s ease-out;
+}
+
+body > main input[type="file"]::file-selector-button:hover,
+body > main input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #e6e6e6;
+  border-color: #888;
+}
+
 button.withsvg {
   display: flex;
   align-items: center;
-  padding: 5px;
+  padding: 8px 14px;
 }
 
 .sensact-control {
