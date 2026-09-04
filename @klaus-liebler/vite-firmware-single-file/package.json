@@ -1,0 +1,14 @@
+{
+  "name": "@klaus-liebler/vite-firmware-single-file",
+  "version": "1.0.0",
+  "main": "vite-plugin-single-file-firmware-asset.ts",
+  "type": "module",
+  "author": "Klaus Liebler",
+  "license": "ISC",
+  "description": "Vite plugin: inlines JS+CSS into a single index.html, strips whitespace (Lit-template-aware) and writes a Brotli-compressed asset for embedding into firmware. Shared by factory_in_a_box, sensact and labathome web projects (formerly duplicated per-repo).",
+  "dependencies": {
+    "@types/node": "^22.10.7",
+    "html-minifier-terser": "^7.2.0",
+    "terser": "^5.49.0"
+  }
+}
