@@ -33,6 +33,19 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   private namespaceId2listener = new Map<number, Array<IMessageListener>>();
   private lockingNamespaceId:number|null=null;
   private socket: WebSocket | null = null;
+  private reconnectTimeoutHandle: number = -1;
+  private isCurrentlyDisconnected: boolean = false;
+  private reconnectAttempts: number = 0;
+  private static readonly RECONNECT_INTERVAL_MS = 1500;
+  // Sessions leben nur im RAM des Boards (s. webmanager_base.hh sessions[]) -- ein echter Reboot
+  // (z.B. nach einem Neu-Flash) loescht sie komplett. Ein reiner Websocket-Reconnect wuerde dann
+  // fuer immer mit dem (serverseitig toten) Session-Cookie scheitern, und die WebSocket-API
+  // erlaubt JS keinen Einblick in den echten HTTP-Statuscode eines fehlgeschlagenen Handshakes
+  // (401 wegen toter Session vs. "Server noch nicht wieder erreichbar" sind von hier aus nicht
+  // unterscheidbar). Nach ein paar erfolglosen reinen WS-Versuchen deshalb ein voller Seiten-Reload
+  // -- die GET-/-Route (handle_webmanager_get) prueft die Session ohnehin serverseitig korrekt und
+  // zeigt bei Bedarf automatisch das Login-Formular statt der SPA.
+  private static readonly RELOAD_AFTER_ATTEMPTS = 4;
   private messageBuffer = new Array<BufferedMessage>();
   private modalSpinner: Ref<HTMLDivElement> = createRef();
   private modalSpinnerTimeoutHandle: number = -1;
@@ -170,6 +183,10 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   }
 
   public CloseConnection(): void {
+    if (this.reconnectTimeoutHandle >= 0) {
+      clearTimeout(this.reconnectTimeoutHandle);
+      this.reconnectTimeoutHandle = -1;
+    }
     this.socket?.close(1000, "Client requested close");
   }
 
@@ -261,13 +278,34 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     window.onresize=()=>{
       this.menu.ShowHamburgerMenuIfLargeScreen()
     };
+    this.connectWebsocket();
+    this.menu.check();
+    //this.chatbot.Setup();
+
+  }
+
+  // Baut die Websocket-Verbindung auf (initial UND fuer jeden Reconnect-Versuch).
+  // Wichtig: Ein voller Board-Reboot (nach Reflash) reisst die TCP-Verbindung abrupt ab --
+  // das ist kein sauberer Close-Handshake (Code 1000/1001), sondern typischerweise 'onerror'
+  // gefolgt von 'onclose' mit z.B. Code 1006, oder das Verbinden schlaegt schlicht fehl,
+  // solange der Server noch nicht wieder erreichbar ist. Deshalb reicht ein reiner
+  // 'onerror'-Handler nicht -- der eigentliche Retry wird ausschliesslich in 'onclose'
+  // ausgeloest, da 'onclose' garantiert (auch nach einem Verbindungsfehler) feuert, waehrend
+  // 'onerror' das nicht immer tut.
+  private connectWebsocket() {
     console.log(`Connecting to ${this.websocketUrl}`)
     this.setModal(true);
-    this.socket = new WebSocket(this.websocketUrl)
-    this.socket.binaryType = 'arraybuffer'
-    this.socket.onopen = (_event) => {
+    const socket = new WebSocket(this.websocketUrl)
+    socket.binaryType = 'arraybuffer'
+    this.socket = socket
+    socket.onopen = (_event) => {
       console.log(`Websocket is connected.`)
       this.setModal(false);
+      this.reconnectAttempts = 0;
+      if (this.isCurrentlyDisconnected) {
+        this.isCurrentlyDisconnected = false;
+        this.ShowSnackbar(Severity.SUCCESS, "Connection restored")
+      }
       if (this.messageBuffer.length>0) {
         console.log(`There are ${this.messageBuffer.length} messages in buffer.`)
         for(const m of this.messageBuffer){
@@ -277,26 +315,53 @@ export class AppController implements IAppManagement, IScreenControllerHost {
       }
       this.messageBuffer=new Array<BufferedMessage>()
     }
-    this.socket.onerror = (event: Event) => {
+    socket.onerror = (event: Event) => {
+      // Nur loggen -- der eigentliche Reconnect wird von 'onclose' angestossen, das nach
+      // 'onerror' immer folgt. Wuerde man hier bereits ShowSnackbar/reconnect ausloesen,
+      // gaebe es doppelte Reconnect-Versuche bzw. doppelte Fehlermeldungen.
       console.error(`Websocket error ${JSON.stringify(event)}`)
-      this.ShowSnackbar(Severity.ERROR, "Websocket Error")
-      this.setModal(true);
     }
-    this.socket.onmessage = (event: MessageEvent<any>) => {
+    socket.onmessage = (event: MessageEvent<any>) => {
       this.onWebsocketData(event.data)
     }
-    this.socket.onclose = (event) => {
-      if (event.code == 1000) {
-        console.info('The Websocket connection has been closed normally. But why????')
+    socket.onclose = (event) => {
+      if (this.socket !== socket) {
+        // Veralteter Socket eines frueheren Verbindungsversuchs -- ignorieren.
         return
       }
-      console.error(`Websocket has been closed: ${JSON.stringify(event)}`)
-      this.ShowSnackbar(Severity.ERROR, `Websocket has been closed`)
+      if (event.code == 1000) {
+        console.info('The Websocket connection has been closed normally.')
+        return
+      }
+      console.error(`Websocket has been closed unexpectedly: ${JSON.stringify(event)}`)
+      if (!this.isCurrentlyDisconnected) {
+        this.isCurrentlyDisconnected = true;
+        this.ShowSnackbar(Severity.ERROR, `Connection lost - reconnecting...`)
+      }
       this.setModal(true);
+      this.scheduleReconnect();
     }
-    this.menu.check();
-    //this.chatbot.Setup();
+  }
 
+  // Fixes, kurzes Retry-Intervall (kein Exponential-Backoff noetig): das Zielgeraet ist ein
+  // Board im LAN, auf dessen Neustart nach einem Flash-Vorgang der Nutzer aktiv wartet --
+  // ein paar Sekunden Retry-Abstand sind voellig ausreichend und vermeiden gleichzeitig eine
+  // Busy-Loop. Der Timeout-Handle wird gegen Mehrfach-Terminierung abgesichert, damit die
+  // Retry-Kette nicht durch einen zweiten parallel geplanten Reconnect verloren geht.
+  private scheduleReconnect() {
+    if (this.reconnectTimeoutHandle >= 0) {
+      return
+    }
+    this.reconnectAttempts++;
+    if (this.reconnectAttempts > AppController.RELOAD_AFTER_ATTEMPTS) {
+      console.warn(`Websocket reconnect failed ${this.reconnectAttempts} times -- reloading page (server-side session check will show login form if the session died, e.g. after a board reboot).`)
+      window.location.reload();
+      return
+    }
+    this.reconnectTimeoutHandle = <number>(<unknown>setTimeout(() => {
+      this.reconnectTimeoutHandle = -1;
+      this.connectWebsocket();
+    }, AppController.RECONNECT_INTERVAL_MS))
   }
 }
 
