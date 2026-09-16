@@ -300,6 +300,11 @@ export class SoundApplication extends SensactApplication {
   private sliderElement: Ref<HTMLInputElement> = createRef()
   private btnMute: Ref<HTMLButtonElement> = createRef()
   private btnPlay: Ref<HTMLButtonElement> = createRef()
+  private soundSelect: Ref<HTMLSelectElement> = createRef()
+  private dayVolumeSlider: Ref<HTMLInputElement> = createRef()
+  private nightVolumeSlider: Ref<HTMLInputElement> = createRef()
+  private dayStartSlider: Ref<HTMLInputElement> = createRef()
+  private dayEndSlider: Ref<HTMLInputElement> = createRef()
 
   private isPlaying: boolean = false;
   private volume: number = -1;
@@ -307,10 +312,26 @@ export class SoundApplication extends SensactApplication {
 
   private lastUserInteraction: number = 0;
 
+  // Index 1..4 -- muss zur Reihenfolge von SOUNDS[]/SONGS_LEN[] in sound.cc passen (kein
+  // generierter Mapping-Mechanismus dafuer vorhanden, s. dortigen Kommentar).
+  private static readonly SOUND_NAMES = ['Dingdong', 'Sirene', 'Positiv', 'Negativ'];
+
+  private static quarterHourToTimeString(q: number): string {
+    const h = Math.floor(q / 4).toString().padStart(2, '0');
+    const m = ((q % 4) * 15).toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+
   protected CoreAppHtmlTemplate = () => html`
   <button ${ref(this.btnMute)} class="${this.muted ? '' : 'active'}" @click=${(e: MouseEvent) => this.onBtnMute(e)}>${this.muted ? "🔇" : "🔈"}</button>
+  <select ${ref(this.soundSelect)}>${SoundApplication.SOUND_NAMES.map(n => html`<option>${n}</option>`)}</select>
   <button ${ref(this.btnPlay)} class="${this.isPlaying ? 'active' : ''}" @click=${(e: MouseEvent) => this.onBtnPlay(e)}>▶</button>
   <input ${ref(this.sliderElement)} @mouseup=${() => this.lastUserInteraction = Date.now()} @touchend=${() => this.lastUserInteraction = Date.now()} @change=${() => this.lastUserInteraction = Date.now()} @input=${() => this.onInputSlide()} type="range" min="256" max="65535"step="256">
+  <label>Tag-Lautstärke <input ${ref(this.dayVolumeSlider)} type="range" min="0" max="65535" step="256" @change=${() => this.onDayVolume()}></label>
+  <label>Nacht-Lautstärke <input ${ref(this.nightVolumeSlider)} type="range" min="0" max="65535" step="256" @change=${() => this.onNightVolume()}></label>
+  <label>Tag ab ${SoundApplication.quarterHourToTimeString(this.dayStartSlider.value?.valueAsNumber ?? 0)} <input ${ref(this.dayStartSlider)} type="range" min="0" max="95" step="1" @change=${() => this.onDayStart()}></label>
+  <label>Tag bis ${SoundApplication.quarterHourToTimeString(this.dayEndSlider.value?.valueAsNumber ?? 0)} <input ${ref(this.dayEndSlider)} type="range" min="0" max="95" step="1" @change=${() => this.onDayEnd()}></label>
+  <button @click=${() => this.onSave()}>💾 Speichern</button>
   `
   private onBtnMute(_e: MouseEvent) {
     this.muted = !this.muted;
@@ -323,14 +344,35 @@ export class SoundApplication extends SensactApplication {
   }
 
   private onBtnPlay(_e: MouseEvent) {
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  play song 1!`);
-    cmd.SendSET_SIGNALCommand(this.applicationId, 1, this.ctx);
+    const idx = (this.soundSelect.value?.selectedIndex ?? 0) + 1;
+    console.info(`${fb.ApplicationId[this.applicationId]} sends  play song ${idx}!`);
+    cmd.SendSET_SIGNALCommand(this.applicationId, idx, this.ctx);
   }
 
   private onInputSlide() {
     this.lastUserInteraction = Date.now();
     console.info(`${fb.ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}`);
     cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber, this.ctx);
+  }
+
+  // Tag/Nacht-Einstellungen: kein Live-Echo vom Board (FillStatus nutzt seine 4 Slots bereits
+  // fuer isPlaying/sound/currentVolume/muted) -- die Slider sind bewusst "fire and forget",
+  // massgeblich ist der im NVS gespeicherte Stand auf dem Board.
+  private onDayVolume() {
+    cmd.SendSET_PARAMCommand(this.applicationId, 1, this.dayVolumeSlider.value!.valueAsNumber, this.ctx);
+  }
+  private onNightVolume() {
+    cmd.SendSET_PARAMCommand(this.applicationId, 2, this.nightVolumeSlider.value!.valueAsNumber, this.ctx);
+  }
+  private onDayStart() {
+    cmd.SendSET_PARAMCommand(this.applicationId, 3, this.dayStartSlider.value!.valueAsNumber, this.ctx);
+  }
+  private onDayEnd() {
+    cmd.SendSET_PARAMCommand(this.applicationId, 4, this.dayEndSlider.value!.valueAsNumber, this.ctx);
+  }
+  private onSave() {
+    console.info(`${fb.ApplicationId[this.applicationId]} sends  SAVE_PARAM`);
+    cmd.SendSAVE_PARAMCommand(this.applicationId, this.ctx);
   }
 
 
