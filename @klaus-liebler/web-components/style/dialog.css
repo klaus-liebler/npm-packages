@@ -79,3 +79,12 @@ dialog>footer {
 dialog td:first-child{
   width: 200px;
 }
+
+/* Eingabefelder in den Dialogen (z.B. WLAN-Passwort) hoeher, Breite bleibt unveraendert */
+dialog.simple input[type="password"],
+dialog.simple input[type="text"] {
+  height: 2.6rem;
+  font-size: 1.15rem;
+  padding: 0 0.7rem;
+  box-sizing: border-box;
+}
