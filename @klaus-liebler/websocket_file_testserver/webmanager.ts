@@ -1,55 +1,63 @@
-import * as flatbuffers from "flatbuffers"
-import * as wifimanager from "@generated/flatbuffers_ts/wifimanager"
-
+import { wifimanager } from "@generated/wsprotocol_ts/ws-protocol";
 import { ISender, NamespaceAndHandler } from "./utils";
 
 const AP_GOOD = "Connect to AP -50dB Auth=2";
 const AP_BAD = "Connect to AP -100dB Auth=2";
 
+function ap(ssid: string, rssi: number, authMode: number) {
+    return { classId: wifimanager.AccessPoint.CLASS_ID, ssid, primaryChannel: 11, rssi, authMode } as const;
+}
+
 export class WebmanagerHandler extends NamespaceAndHandler {
     constructor() {
-        super(wifimanager.Namespace.Value)
+        super(wifimanager.NAMESPACE_ID)
     }
-    public Handle(buffer: flatbuffers.ByteBuffer, sender: ISender) {
-        var rw = wifimanager.RequestWrapper.getRootAsRequestWrapper(buffer)
-        switch (rw.requestType()) {
-            case wifimanager.Requests.RequestWifiConnect: {
-                const rwc = <wifimanager.RequestWifiConnect>rw.request(new wifimanager.RequestWifiConnect());
-                let b = new flatbuffers.Builder(1024);
-                if (rwc.ssid() == AP_GOOD) {
-                    let r = wifimanager.ResponseWifiConnect.createResponseWifiConnect(b, true, b.createString(AP_GOOD), 0xFF101001, 0x10101002, 0xFF101003, -62);
-                    b.finish(wifimanager.ResponseWrapper.createResponseWrapper(b, wifimanager.Responses.ResponseWifiConnect, r));
-                } else {
-                    let r = wifimanager.ResponseWifiConnect.createResponseWifiConnect(b, false, b.createString(AP_BAD), 0, 0, 0, -62);
-                    b.finish(wifimanager.ResponseWrapper.createResponseWrapper(b, wifimanager.Responses.ResponseWifiConnect, r));
-                }
-                sender.send(wifimanager.Namespace.Value, b);
-            }
+    public Handle(messageTypeId: number, view: DataView, sender: ISender) {
+        switch (messageTypeId) {
+            case wifimanager.RequestWifiConnect.TYPE_ID: {
+                const req = wifimanager.RequestWifiConnect.decode(view, 0);
+                const good = req.ssid == AP_GOOD;
+                sender.send(wifimanager.ResponseWifiConnect.encode({
+                    requestId: req.requestId,
+                    success: good,
+                    ssid: good ? AP_GOOD : AP_BAD,
+                    ip: good ? 0xFF101001 : 0,
+                    netmask: good ? 0x10101002 : 0,
+                    gateway: good ? 0xFF101003 : 0,
+                    rssi: -62,
+                }));
                 break;
-            case wifimanager.Requests.RequestWifiDisconnect: {
-                let b = new flatbuffers.Builder(1024);
-                b.finish(wifimanager.ResponseWrapper.createResponseWrapper(b, wifimanager.Responses.ResponseWifiDisconnect, wifimanager.ResponseWifiDisconnect.createResponseWifiDisconnect(b)));
-                sender.send(wifimanager.Namespace.Value, b);
             }
+            case wifimanager.RequestWifiDisconnect.TYPE_ID: {
+                const req = wifimanager.RequestWifiDisconnect.decode(view, 0);
+                sender.send(wifimanager.ResponseWifiDisconnect.encode({ requestId: req.requestId }));
                 break;
-            case wifimanager.Requests.RequestNetworkInformation: {
-                let b = new flatbuffers.Builder(1024);
-
-                let accesspointsOffset = wifimanager.ResponseNetworkInformation.createAccesspointsVector(b, [
-                    wifimanager.AccessPoint.createAccessPoint(b, b.createString(AP_BAD), 11, -66, 2),
-                    wifimanager.AccessPoint.createAccessPoint(b, b.createString(AP_GOOD), 11, -50, 2),
-                    wifimanager.AccessPoint.createAccessPoint(b, b.createString("AP -76dB Auth=0"), 11, -76, 0),
-                    wifimanager.AccessPoint.createAccessPoint(b, b.createString("AP -74dB Auth=0"), 11, -74, 0),
-                    wifimanager.AccessPoint.createAccessPoint(b, b.createString("AP -66dB Auth=0"), 11, -66, 0),
-                    wifimanager.AccessPoint.createAccessPoint(b, b.createString("AP -59dB Auth=0"), 11, -50, 0)
-                ]);
-                let r = wifimanager.ResponseNetworkInformation.createResponseNetworkInformation(b,
-                    b.createString("MyHostnameKL"),
-                    b.createString("MySsidApKL"), b.createString("Password"), 32, true, b.createString("ssidSta"), 32, 43, 23, 23, accesspointsOffset);
-                b.finish(wifimanager.ResponseWrapper.createResponseWrapper(b, wifimanager.Responses.ResponseNetworkInformation, r));
-                sender.send(wifimanager.Namespace.Value, b);
             }
-                break
+            case wifimanager.RequestNetworkInformation.TYPE_ID: {
+                const req = wifimanager.RequestNetworkInformation.decode(view, 0);
+                sender.send(wifimanager.ResponseNetworkInformation.encode({
+                    requestId: req.requestId,
+                    hostname: "MyHostnameKL",
+                    ssidAp: "MySsidApKL",
+                    passwordAp: "Password",
+                    ipAp: 32,
+                    isConnectedSta: true,
+                    ssidSta: "ssidSta",
+                    ipSta: 32,
+                    netmaskSta: 43,
+                    gatewaySta: 23,
+                    rssiSta: 23,
+                    accesspoints: [
+                        ap(AP_BAD, -66, 2),
+                        ap(AP_GOOD, -50, 2),
+                        ap("AP -76dB Auth=0", -76, 0),
+                        ap("AP -74dB Auth=0", -74, 0),
+                        ap("AP -66dB Auth=0", -66, 0),
+                        ap("AP -59dB Auth=0", -50, 0),
+                    ],
+                }));
+                break;
+            }
         }
     }
 }

@@ -1,36 +1,24 @@
-import * as flatbuffers from "flatbuffers"
-import * as journal from "@generated/flatbuffers_ts/journal"
+import { journal } from "@generated/wsprotocol_ts/ws-protocol";
 import { ISender, NamespaceAndHandler } from "./utils";
 
 export class JournalHandler extends NamespaceAndHandler {
     constructor(){
-        super(journal.Namespace.Value)
+        super(journal.NAMESPACE_ID)
     }
-    public Handle(bb: flatbuffers.ByteBuffer, sender: ISender) {
-        var rw=journal.RequestWrapper.getRootAsRequestWrapper(bb)
-        switch(rw.requestType()){
-            case journal.Requests.NONE:
-                return;
-            case journal.Requests.RequestJournal:{
-                //var _rj = <journal.RequestJournal>rw.request(new journal.RequestJournal());
-                var b = new flatbuffers.Builder(1024);
-                const vect =journal.ResponseJournal.createJournalItemsVector(b,[
-                    journal.JournalItem.createJournalItem(b, BigInt(Math.floor(Date.now()/1000-3600)), 1, b.createString("An Entry"), 42, 1),
-                    journal.JournalItem.createJournalItem(b, BigInt(Math.floor(Date.now()/1000)), 2, b.createString("A second Entry"), 42, 1)
-                ])
-
-                b.finish(
-                    journal.ResponseWrapper.createResponseWrapper(
-                        b,
-                        journal.Responses.ResponseJournal,
-                        journal.ResponseJournal.createResponseJournal(
-                            b,
-                            vect
-                        )
-                    )
-                )
-                sender.send(journal.Namespace.Value, b);
+    public Handle(messageTypeId: number, view: DataView, sender: ISender) {
+        switch(messageTypeId){
+            case journal.RequestJournal.TYPE_ID:{
+                const req = journal.RequestJournal.decode(view, 0);
+                const now = Math.floor(Date.now()/1000);
+                sender.send(journal.ResponseJournal.encode({
+                    requestId: req.requestId,
+                    journalItems: [
+                        { classId: journal.JournalItem.CLASS_ID, lastMessageTimestamp: now-3600, messageCode: 1, messageString: "An Entry", messageData: 42, messageCount: 1 },
+                        { classId: journal.JournalItem.CLASS_ID, lastMessageTimestamp: now, messageCode: 2, messageString: "A second Entry", messageData: 42, messageCount: 1 },
+                    ],
+                }));
+                break;
             }
-        }   
+        }
     }
 }

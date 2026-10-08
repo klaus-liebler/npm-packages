@@ -1,6 +1,5 @@
 import * as fs from "node:fs"
 import path from "node:path"
-import * as flatbuffers from "flatbuffers"
 
 import { randomInt } from "node:crypto";
 
@@ -9,19 +8,24 @@ const DEFAULT_FBD_FILEPATH = "default.fbd";
 const TEMP_FBD_FILEPATH = "temp.fbd";
 
 
-import * as functionblock from "@generated/flatbuffers_ts/functionblock"
+import { functionblock } from "@generated/wsprotocol_ts/ws-protocol";
 import { ISender, NamespaceAndHandler } from "./utils";
 
 export class FunctionblockHandler extends NamespaceAndHandler {
     constructor(private readonly spiffsRoot:string) {
-        super(functionblock.Namespace.Value)
+        super(functionblock.NAMESPACE_ID)
     }
-    public Handle(buffer: flatbuffers.ByteBuffer, sender: ISender) {
-        var rw = functionblock.RequestWrapper.getRootAsRequestWrapper(buffer)
-        switch (rw.requestType()) {
-            case functionblock.Requests.RequestDebugData: {
+    public Handle(messageTypeId: number, view: DataView, sender: ISender) {
+        switch (messageTypeId) {
+            case functionblock.RequestFbdRun.TYPE_ID: {
+                const req = functionblock.RequestFbdRun.decode(view, 0);
+                sender.send(functionblock.ResponseFbdRun.encode({ requestId: req.requestId }));
+                break;
+            }
+            case functionblock.RequestDebugData.TYPE_ID: {
+                const req = functionblock.RequestDebugData.decode(view, 0);
                 var temp = fs.readFileSync(path.join(this.spiffsRoot, TEMP_FBD_FILEPATH))
-                var dv = new DataView(temp.buffer);
+                var dv = new DataView(temp.buffer, temp.byteOffset, temp.byteLength);
                 var sizeOfBinaryData = dv.getUint32(0, true)
                 var dataStructureVersion = dv.getUint32(4, true);
                 if (dataStructureVersion != 0xAFFECAFE) {
@@ -34,22 +38,16 @@ export class FunctionblockHandler extends NamespaceAndHandler {
                 var floatsCount = dv.getUint32(20, true);
                 var colorsCount = dv.getUint32(24, true);
                 //var operatorsCount = dv.getUint32(28, true);
-                var bools = <any>Array.from(Array(booleansCount).keys()).map(() => { randomInt(0, 2) == 1 ? true : false })
-                var integers = <any>Array.from(Array(integersCount).keys()).map(() => { randomInt(0, 100) })
-                var floats = <any>Array.from(Array(floatsCount).keys()).map(() => { randomInt(0, 100) })
-                var colors = <any>Array.from(Array(colorsCount).keys()).map(() => { randomInt(0, 2000000000) })
-                let b = new flatbuffers.Builder(1024);
-                var r = functionblock.ResponseDebugData.createResponseDebugData(b, hash,
-                    functionblock.ResponseDebugData.createBoolsVector(b, bools),
-                    functionblock.ResponseDebugData.createIntegersVector(b, integers),
-                    functionblock.ResponseDebugData.createFloatsVector(b, floats),
-                    functionblock.ResponseDebugData.createColorsVector(b, colors)
-                );
-                b.finish(functionblock.ResponseWrapper.createResponseWrapper(b, functionblock.Responses.ResponseDebugData, r));
-                sender.send(functionblock.Namespace.Value, b);
-
-            }
+                sender.send(functionblock.ResponseDebugData.encode({
+                    requestId: req.requestId,
+                    debugInfoHash: hash,
+                    bools: Array.from({ length: booleansCount }, () => ({ value: randomInt(0, 2) == 1 })),
+                    integers: Array.from({ length: integersCount }, () => ({ value: randomInt(0, 100) })),
+                    floats: Array.from({ length: floatsCount }, () => ({ value: randomInt(0, 100) })),
+                    colors: Array.from({ length: colorsCount }, () => ({ value: randomInt(0, 2000000000) })),
+                }));
                 break;
+            }
         }
     }
 }

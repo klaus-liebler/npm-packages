@@ -1,24 +1,35 @@
 import http from "node:http"
 import https from "node:https"
 import * as fs from "node:fs"
-import * as flatbuffers from "flatbuffers"
 import * as weso from "ws"
 import * as path from "node:path"
 import * as forge from "node-forge";
 import { PeerCertificate, TLSSocket } from "node:tls"
 
+// Wire-Format (BestBinaryBuffers, s. @generated/wsprotocol_ts): jeder Frame beginnt mit einem
+// 4-Byte-Kopf namespaceId:u16 + messageTypeId:u16 (little endian), gefolgt von der Nutzlast.
+// <namespace>.<Message>.encode() liefert bereits den kompletten Frame inkl. Kopf, decode(view, 0)
+// erwartet ihn ebenso -- der Server haengt also nichts an und schneidet nichts ab.
+//
+// Die Handler in diesem Paket importieren "@generated/wsprotocol_ts/ws-protocol". Namespace-/Typ-IDs
+// werden pro Projekt vergeben, deshalb muss das jeweilige Projekt seinen eigenen generierten Code
+// liefern: den Testserver mit "node --preserve-symlinks --import tsx ..." starten, dann werden
+// diese Importe (und "ws") aus den node_modules des Projekts aufgeloest.
 export interface ISender{
-    send(ns:number, builder:flatbuffers.Builder):void;
+    send(frame: Uint8Array):void;
  }
 
 export abstract class NamespaceAndHandler{
     constructor(public readonly namespace:number){}
     protected sender?: ISender;
-    public abstract Handle(buffer: flatbuffers.ByteBuffer, sender: ISender):void;
+    // 'view' umfasst den kompletten Frame inkl. 4-Byte-Kopf -> direkt an <Message>.decode(view, 0) geben.
+    public abstract Handle(messageTypeId: number, view: DataView, sender: ISender):void;
     public SetSender(sender: ISender){
         this.sender = sender;
     }
 }
+
+export const FRAME_HEADER_SIZE = 4;
 
 const WEBSERVER_PORT = 3000;
 const AUTHSERVER_PORT = 3001;
@@ -28,32 +39,35 @@ var current_ws: weso.WebSocket;
 var handlers: Array<NamespaceAndHandler> = new Array<NamespaceAndHandler>();
 
 class Sender implements ISender{
-    public send(ns:number, builder:flatbuffers.Builder){
+    public send(frame: Uint8Array){
         if(!current_ws || current_ws.readyState!=weso.WebSocket.OPEN){
             console.error("No websocket connection available to send data");
             return;
         }
-        const data = builder.asUint8Array();
-        const arrayBuffer = new ArrayBuffer(4 + data.byteLength);
-        new DataView(arrayBuffer).setUint32(0, ns, true);
-        const newData = new Uint8Array(arrayBuffer);
-        newData.set(data, 4);
-        current_ws.send(newData);
+        current_ws.send(frame);
     }
 }
 
 export function OnMessage(buffer: Buffer, ws: weso.WebSocket){
-    var b_req = new flatbuffers.ByteBuffer(new Uint8Array(buffer.buffer, buffer.byteOffset + 4, buffer.length - 4));
-    let ns = buffer.readUint32LE(0);
-    console.log(`Received buffer length ${buffer.byteLength} for Namespace ${ns}`);
+    if(buffer.length < FRAME_HEADER_SIZE){
+        console.error(`Received frame with only ${buffer.length} bytes, ignoring it`);
+        return;
+    }
+    const ns = buffer.readUInt16LE(0);
+    const messageTypeId = buffer.readUInt16LE(2);
+    console.log(`Received frame length ${buffer.byteLength} for namespace ${ns}, messageTypeId ${messageTypeId}`);
     current_ws = ws;
+    handlers.forEach(h=>{h.SetSender(sender);});
     const h =handlers.find(h=>h.namespace==ns);
     if(!h){
         console.error(`No handler registered for namespace ${ns}`);
         return;
     }
-    h.Handle(b_req, sender);
-    handlers.forEach(h=>{h.SetSender(sender);});
+    try{
+        h.Handle(messageTypeId, new DataView(buffer.buffer, buffer.byteOffset, buffer.length), sender);
+    }catch(e){
+        console.error(`Handler for namespace ${ns} failed on messageTypeId ${messageTypeId}:`, e);
+    }
 }
 
 export function GetWebSocketServer():weso.WebSocketServer{
@@ -88,7 +102,14 @@ export function StartServers(sslCertificatesRoot:string, handlers_:Array<Namespa
         console.log(`Request received for '${req.url}'`);
         //var local_path = new URL(req.url).pathname;
     
-        if (req.method == "POST" && req.url!.startsWith("/files")) {
+        if (req.method == "POST" && req.url == "/login") {
+            // Wie das Board: Der Vite-Dev-Proxy loggt sich vor dem Websocket-Aufbau per POST /login ein
+            // und erwartet ein "session"-Cookie. Der Testserver prueft keine Zugangsdaten.
+            req.resume();
+            res.writeHead(200, { 'Set-Cookie': 'session=testserver; Path=/; Secure; HttpOnly', 'Content-Type': 'text/plain' });
+            res.end("OK");
+        }
+        else if (req.method == "POST" && req.url!.startsWith("/files")) {
             const req_body_chunks: any[] = [];
             req.on("data", (chunk: any) => req_body_chunks.push(chunk));
             req.on("end", () => {
@@ -166,7 +187,7 @@ export function StartServers(sslCertificatesRoot:string, handlers_:Array<Namespa
             if (!peerCert.subject) {
                 return res.writeHead(401).end(`Sorry, but you need to provide a client certificate to continue.`);
             }
-            const cn = peerCert.subject.CN;
+            const cn = String(peerCert.subject.CN);
             if(!(cn.startsWith("mosquitto") ||cn.startsWith("labathome"))){
                 return res.writeHead(403).end(`Sorry ${peerCert.subject.CN}, certificates from ${peerCert.issuer.CN} are not welcome here.`);
             }

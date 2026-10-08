@@ -1,151 +1,115 @@
-import * as flatbuffers from "flatbuffers"
-import {Finger, Namespace, NotifyEnrollNewFinger, RequestDeleteFinger, RequestEnrollNewFinger, RequestFingerActionManually, RequestRenameFinger, Requests, RequestStoreFingerAction, RequestStoreFingerSchedule, RequestWrapper, ResponseCancelInstruction, ResponseDeleteAllFingers, ResponseDeleteFinger, ResponseEnrollNewFinger, ResponseFingerActionManually, ResponseFingerprintSensorInfo, ResponseFingers, ResponseRenameFinger, Responses, ResponseStoreFingerAction, ResponseStoreFingerSchedule, ResponseWrapper, Uint8x32} from "@generated/flatbuffers_ts/fingerprint";
-import { exampleSchedules} from "./scheduler"
+import { fingerprint } from "@generated/wsprotocol_ts/ws-protocol";
+import { exampleSchedules } from "./scheduler"
 import { ISender, NamespaceAndHandler } from "./utils";
 
-const exampleFingers=[
-    {name:"Klaus rechts mitte", index:1, schedule:"OneWeekIn15MinutesA", action:1},
-    {name:"Steffi links mitte", index:2, schedule:"PredefinedA", action:3},
-    {name:"Klara rechts zeige", index:3, schedule:"SunRandomA", action:2},
+const exampleFingers = [
+    { name: "Klaus rechts mitte", index: 1, schedule: "OneWeekIn15MinutesA", action: 1 },
+    { name: "Steffi links mitte", index: 2, schedule: "PredefinedA", action: 3 },
+    { name: "Klara rechts zeige", index: 3, schedule: "SunRandomA", action: 2 },
 ]
 
-
-
 export class FingerprintHandler extends NamespaceAndHandler {
-    constructor(){
-        super(Namespace.Value)
+    private newFingerIndex = 42;
+
+    constructor() {
+        super(fingerprint.NAMESPACE_ID)
     }
 
-    private processRequestStoreFingerAction(req: RequestStoreFingerAction, sender: ISender){
-        let b = new flatbuffers.Builder(1024);
-        exampleFingers.find(v=>v.index==req.fingerIndex())!.action=req.actionIndex()
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseStoreFingerAction,
-            ResponseStoreFingerAction.createResponseStoreFingerAction(b)
-            ));
-        sender.send(Namespace.Value, b)
+    public Handle(messageTypeId: number, view: DataView, sender: ISender) {
+        switch (messageTypeId) {
+            case fingerprint.RequestFingers.TYPE_ID: {
+                const req = fingerprint.RequestFingers.decode(view, 0);
+                sender.send(fingerprint.ResponseFingers.encode({
+                    requestId: req.requestId,
+                    scheduleNames: [...exampleSchedules.keys()],
+                    fingers: exampleFingers.map(f => ({ classId: fingerprint.Finger.CLASS_ID, name: f.name, index: f.index, scheduleName: f.schedule, actionIndex: f.action } as const)),
+                }));
+                break;
+            }
+            case fingerprint.RequestFingerprintSensorInfo.TYPE_ID: {
+                const req = fingerprint.RequestFingerprintSensorInfo.decode(view, 0);
+                const usedIndices = new Array<number>(32).fill(0);
+                usedIndices[0] = 0b10101010;
+                usedIndices[1] = 0b01010101;
+                sender.send(fingerprint.ResponseFingerprintSensorInfo.encode({
+                    requestId: req.requestId,
+                    status: 0,
+                    librarySizeMax: 1500,
+                    librarySizeUsed: 2,
+                    libraryUsedIndices: { v: usedIndices },
+                    securityLevel: 3,
+                    deviceAddress: 0xffff,
+                    dataPacketSizeCode: 2,
+                    baudRateTimes9600: 6,
+                    algVer: "AlgVer1.1",
+                    fwVer: "FwVer1.2",
+                }));
+                break;
+            }
+            case fingerprint.RequestRenameFinger.TYPE_ID: {
+                const req = fingerprint.RequestRenameFinger.decode(view, 0);
+                const f = exampleFingers.find(v => v.name == req.oldName);
+                if (f) f.name = req.newName;
+                sender.send(fingerprint.ResponseRenameFinger.encode({ requestId: req.requestId, errorcode: f ? 0 : 1 }));
+                break;
+            }
+            case fingerprint.RequestCancelInstruction.TYPE_ID: {
+                const req = fingerprint.RequestCancelInstruction.decode(view, 0);
+                sender.send(fingerprint.ResponseCancelInstruction.encode({ requestId: req.requestId, errorcode: 0 }));
+                break;
+            }
+            case fingerprint.RequestDeleteAllFingers.TYPE_ID: {
+                const req = fingerprint.RequestDeleteAllFingers.decode(view, 0);
+                exampleFingers.length = 0;
+                sender.send(fingerprint.ResponseDeleteAllFingers.encode({ requestId: req.requestId, errorcode: 0 }));
+                break;
+            }
+            case fingerprint.RequestStoreFingerSchedule.TYPE_ID: {
+                const req = fingerprint.RequestStoreFingerSchedule.decode(view, 0);
+                const f = exampleFingers.find(v => v.index == req.fingerIndex);
+                if (f) f.schedule = req.scheduleName;
+                sender.send(fingerprint.ResponseStoreFingerSchedule.encode({ requestId: req.requestId }));
+                break;
+            }
+            case fingerprint.RequestStoreFingerAction.TYPE_ID: {
+                const req = fingerprint.RequestStoreFingerAction.decode(view, 0);
+                const f = exampleFingers.find(v => v.index == req.fingerIndex);
+                if (f) f.action = req.actionIndex;
+                sender.send(fingerprint.ResponseStoreFingerAction.encode({ requestId: req.requestId }));
+                break;
+            }
+            case fingerprint.RequestDeleteFinger.TYPE_ID: {
+                const req = fingerprint.RequestDeleteFinger.decode(view, 0);
+                const i = exampleFingers.findIndex(v => v.name == req.name);
+                if (i >= 0) exampleFingers.splice(i, 1);
+                sender.send(fingerprint.ResponseDeleteFinger.encode({ requestId: req.requestId, errorcode: i >= 0 ? 0 : 1, name: req.name }));
+                break;
+            }
+            case fingerprint.RequestEnrollNewFinger.TYPE_ID: {
+                const req = fingerprint.RequestEnrollNewFinger.decode(view, 0);
+                console.log(`sendResponseEnrollNewFinger name=${req.name}`)
+                sender.send(fingerprint.ResponseEnrollNewFinger.encode({ requestId: req.requestId, errorcode: 0 }));
+                for (let step = 0; step < 16; step++) {
+                    this.sendNotifyEnrollNewFinger(sender, req.requestId, step, this.newFingerIndex, req.name, step * 500 + 2000);
+                }
+                break;
+            }
+            case fingerprint.RequestFingerActionManually.TYPE_ID: {
+                const req = fingerprint.RequestFingerActionManually.decode(view, 0);
+                sender.send(fingerprint.ResponseFingerActionManually.encode({ requestId: req.requestId }));
+                break;
+            }
+        }
     }
-    
-    private processRequestStoreFingerSchedule(req: RequestStoreFingerSchedule, sender: ISender){
 
-        let b = new flatbuffers.Builder(1024);
-        exampleFingers.find(v=>v.index==req.fingerIndex())!.schedule=req.scheduleName()!
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseStoreFingerSchedule,
-            ResponseStoreFingerSchedule.createResponseStoreFingerSchedule(b)
-            ));
-        sender.send(Namespace.Value, b)
-    }
-    
-    private sendResponseFingerprintSensorInfo(sender: ISender) {
-        let b = new flatbuffers.Builder(1024);
-        var usedIndices =new Array(32).fill(0);
-        usedIndices[0]=0b10101010;
-        usedIndices[1]=0b01010101;
-        
-        var alg=b.createString("AlgVer1.1")
-        var fw=b.createString("FwVer1.2")
-        ResponseFingerprintSensorInfo.startResponseFingerprintSensorInfo(b);
-        ResponseFingerprintSensorInfo.addAlgVer(b, alg);
-        ResponseFingerprintSensorInfo.addFwVer(b, fw);
-        ResponseFingerprintSensorInfo.addBaudRateTimes9600(b, 6);
-        ResponseFingerprintSensorInfo.addDataPacketSizeCode(b, 2);
-        ResponseFingerprintSensorInfo.addDeviceAddress(b, 0xffff);
-        ResponseFingerprintSensorInfo.addLibrarySizeMax(b, 1500);
-        ResponseFingerprintSensorInfo.addLibrarySizeUsed(b, 2);
-        ResponseFingerprintSensorInfo.addLibraryUsedIndices(b, Uint8x32.createUint8x32(b, usedIndices));
-        ResponseFingerprintSensorInfo.addSecurityLevel(b, 3)
-        ResponseFingerprintSensorInfo.addStatus(b, 0);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseFingerprintSensorInfo, ResponseFingerprintSensorInfo.endResponseFingerprintSensorInfo(b)));
-        sender.send(Namespace.Value, b)
-    }
-    
-    
-    private sendResponseFingers(sender: ISender) {
-        let b = new flatbuffers.Builder(1024);
-        var fingers:number[]=[];
-        exampleFingers.forEach(f=>{
-            fingers.push(Finger.createFinger(b, b.createString(f.name), f.index, b.createString(f.schedule), f.action))
-        })
-      
-        var scheduleNames: number[]=[];
-        exampleSchedules.forEach((v,k) => {
-            scheduleNames.push(b.createString(k))
-        });
-    
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseFingers,
-            ResponseFingers.createResponseFingers(b, ResponseFingers.createScheduleNamesVector(b, scheduleNames),  ResponseFingers.createFingersVector(b, fingers))
-            ));
-        sender.send(Namespace.Value, b)
-    }
-    private newFingerIndex=42;
-    
-    private sendNotifyEnrollNewFinger(sender: ISender, step:number, index:number, name:string, delay_ms:number){
-        
+    private sendNotifyEnrollNewFinger(sender: ISender, requestId: number, step: number, index: number, name: string, delay_ms: number) {
         setTimeout(() => {
             console.log(`sendNotifyEnrollNewFinger step=${step}, index=${index}, name=${name}`)
-            let b = new flatbuffers.Builder(1024);
-            b.finish(ResponseWrapper.createResponseWrapper(b, Responses.NotifyEnrollNewFinger, NotifyEnrollNewFinger.createNotifyEnrollNewFinger(b, b.createString(name), index, step, 0)));
-            sender.send(Namespace.Value, b)
-            if(step==15){
-                exampleFingers.push({name:name, index:this.newFingerIndex, schedule:exampleSchedules[0].name, action:0})
+            sender.send(fingerprint.NotifyEnrollNewFinger.encode({ requestId, name, index, step, errorcode: 0 }));
+            if (step == 15) {
+                exampleFingers.push({ name: name, index: this.newFingerIndex, schedule: exampleSchedules.keys().next().value ?? "", action: 0 })
                 this.newFingerIndex++;
             }
         }, delay_ms);
-    
-    }
-    
-    private sendResponseEnrollNewFinger(sender: ISender, req:RequestEnrollNewFinger){
-        var fpName= req.name()!;
-        console.log(`sendResponseEnrollNewFinger name=${fpName}`)
-        let b = new flatbuffers.Builder(1024);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseEnrollNewFinger, ResponseEnrollNewFinger.createResponseEnrollNewFinger(b, 0)));
-        sender.send(Namespace.Value, b)
-        for(var step=0; step<16;step++){
-            this.sendNotifyEnrollNewFinger(sender, step, this.newFingerIndex, fpName, step*500+2000);
-        }
-    }
-    public Handle(bb: flatbuffers.ByteBuffer, sender: ISender) {
-        var rw=RequestWrapper.getRootAsRequestWrapper(bb)
-        switch(rw.requestType()){
-            case Requests.NONE:return
-            case Requests.RequestFingers:this.sendResponseFingers(sender); break;
-            case Requests.RequestFingerprintSensorInfo:this.sendResponseFingerprintSensorInfo(sender); break;
-            case Requests.RequestRenameFinger:this.processRenameFinger(sender, rw.request(new RequestRenameFinger())); break;
-            case Requests.RequestCancelInstruction:this.processCancelInstruction(sender); break;
-            case Requests.RequestDeleteAllFingers:this.processDeleteAllFingers(sender); break;
-            case Requests.RequestStoreFingerSchedule:this.processRequestStoreFingerSchedule(rw.request(new RequestStoreFingerSchedule()), sender); break;
-            case Requests.RequestStoreFingerAction:this.processRequestStoreFingerAction(rw.request(new RequestStoreFingerAction()), sender); break;
-            case Requests.RequestDeleteFinger:this.processDeleteFinger(rw.request(new RequestDeleteFinger()), sender); break;
-            case Requests.RequestEnrollNewFinger:this.sendResponseEnrollNewFinger(sender, rw.request(new RequestEnrollNewFinger())); break;
-            case Requests.RequestFingerActionManually:this.processFingerActionManually(sender, rw.request(new RequestFingerActionManually())); break;
-        }   
-    }
-    processFingerActionManually(sender: ISender, arg1: any) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseFingerActionManually, ResponseFingerActionManually.createResponseFingerActionManually(b)));
-        sender.send(Namespace.Value, b)
-    }
-    processDeleteFinger(r: RequestDeleteFinger, sender: ISender) {
-        exampleFingers.filter(v=>v.name==r.name())
-        let b = new flatbuffers.Builder(1024);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseDeleteFinger, ResponseDeleteFinger.createResponseDeleteFinger(b, 0, b.createString(r.name()))));
-        sender.send(Namespace.Value, b)
-    }
-    processDeleteAllFingers(sender: ISender) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseDeleteAllFingers, ResponseDeleteAllFingers.createResponseDeleteAllFingers(b, 0)));
-        sender.send(Namespace.Value, b)
-    }
-    processCancelInstruction(sender: ISender) {
-        let b = new flatbuffers.Builder(1024);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseCancelInstruction, ResponseCancelInstruction.createResponseCancelInstruction(b, 0)));
-        sender.send(Namespace.Value, b)
-    }
-    processRenameFinger(sender: ISender, r: RequestRenameFinger) {
-        exampleFingers.find(v=>v.name==r.oldName())!.name=r.newName()!
-        let b = new flatbuffers.Builder(1024);
-        b.finish(ResponseWrapper.createResponseWrapper(b, Responses.ResponseRenameFinger, ResponseRenameFinger.createResponseRenameFinger(b, 0)));
-        sender.send(Namespace.Value, b)
     }
 }
-
-

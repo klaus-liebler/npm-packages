@@ -1,39 +1,44 @@
-import * as flatbuffers from "flatbuffers"
-import * as system from "@generated/flatbuffers_ts/systeminfo"
+import { systeminfo } from "@generated/wsprotocol_ts/ws-protocol";
 import { ISender, NamespaceAndHandler } from "./utils";
+
+const MAC: systeminfo.Mac6 = { v: [1, 2, 3, 4, 5, 6] };
+
+function partition(label: string, type: number, subtype: number, size: number) {
+    return {
+        classId: systeminfo.PartitionInfo.CLASS_ID, label, type, subtype, size, otaState: 1, running: true,
+        appName: "AppName", appVersion: "AppVersion", appDate: "AppDate", appTime: "AppTime"
+    } as const;
+}
+
 export class SystemHandler extends NamespaceAndHandler {
     constructor() {
-        super(system.Namespace.Value)
+        super(systeminfo.NAMESPACE_ID)
     }
-    public Handle(buffer: flatbuffers.ByteBuffer, sender: ISender) {
-        var rw = system.RequestWrapper.getRootAsRequestWrapper(buffer)
-        switch (rw.requestType()) {
-            case system.Requests.RequestSystemData: {
-                let b = new flatbuffers.Builder(1024);
-                var partitionsOffset = new Array<number>();
-                partitionsOffset.push(system.PartitionInfo.createPartitionInfo(b, b.createString("Label0"), 0, 0x10, 3072, 1, true, b.createString("AppName"), b.createString("AppVersion"), b.createString("AppDate"), b.createString("AppTime")));
-                partitionsOffset.push(system.PartitionInfo.createPartitionInfo(b, b.createString("Label1"), 1, 0x01, 16384, 1, true, b.createString("AppName"), b.createString("AppVersion"), b.createString("AppDate"), b.createString("AppTime")));
-                const partVectOffset =system.ResponseSystemData.createPartitionsVector(b, partitionsOffset)
-                
-                system.ResponseSystemData.startResponseSystemData(b);
-                system.ResponseSystemData.addChipCores(b, 2);
-                system.ResponseSystemData.addChipFeatures(b, 255);
-                system.ResponseSystemData.addPartitions(b, partVectOffset);
-                system.ResponseSystemData.addChipModel(b, 2);
-                system.ResponseSystemData.addChipRevision(b, 3);
-                system.ResponseSystemData.addChipTemperature(b, 23.4);
-                system.ResponseSystemData.addFreeHeap(b, 1203);
-                system.ResponseSystemData.addMacAddressBt(b, system.Mac6.createMac6(b, [1, 2, 3, 4, 5, 6]));
-                system.ResponseSystemData.addMacAddressEth(b, system.Mac6.createMac6(b, [1, 2, 3, 4, 5, 6]));
-                system.ResponseSystemData.addMacAddressIeee802154(b, system.Mac6.createMac6(b, [1, 2, 3, 4, 5, 6]));
-                system.ResponseSystemData.addMacAddressWifiSoftap(b, system.Mac6.createMac6(b, [1, 2, 3, 4, 5, 6]));
-                system.ResponseSystemData.addMacAddressWifiSta(b, system.Mac6.createMac6(b, [1, 2, 3, 4, 5, 6]));
-                system.ResponseSystemData.addSecondsEpoch(b, BigInt(Math.floor(new Date().getTime() / 1000)));
-                system.ResponseSystemData.addSecondsUptime(b, BigInt(10));
-                let rsd = system.ResponseSystemData.endResponseSystemData(b);
-                b.finish(system.ResponseWrapper.createResponseWrapper(b, system.Responses.ResponseSystemData, rsd));
-                sender.send(system.Namespace.Value, b);
+    public Handle(messageTypeId: number, view: DataView, sender: ISender) {
+        switch (messageTypeId) {
+            case systeminfo.RequestSystemData.TYPE_ID: {
+                const req = systeminfo.RequestSystemData.decode(view, 0);
+                sender.send(systeminfo.ResponseSystemData.encode({
+                    requestId: req.requestId,
+                    secondsEpoch: Math.floor(Date.now() / 1000),
+                    secondsUptime: 10,
+                    freeHeap: 1203,
+                    macAddressWifiSta: MAC,
+                    macAddressWifiSoftap: MAC,
+                    macAddressBt: MAC,
+                    macAddressEth: MAC,
+                    macAddressIeee802154: MAC,
+                    chipModel: 2,
+                    chipFeatures: 255,
+                    chipRevision: 3,
+                    chipCores: 2,
+                    chipTemperature: 23.4,
+                    partitions: [partition("Label0", 0, 0x10, 3072), partition("Label1", 1, 0x01, 16384)],
+                }));
+                break;
             }
+            case systeminfo.RequestRestart.TYPE_ID:
+                console.info("SystemHandler: RequestRestart received (ignored by testserver)");
                 break;
         }
     }
