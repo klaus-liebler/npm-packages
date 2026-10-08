@@ -1,0 +1,14 @@
+{
+  "name": "@klaus-liebler/flowchart",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "type": "module",
+  "author": "Klaus Liebler",
+  "license": "ISC",
+  "description": "Function block diagram editor + simulator (FBD). Optional device binding via IFlowchartDevice (e.g. labathome); without a device it runs standalone.",
+  "dependencies": {
+    "@klaus-liebler/commons": "file:../commons",
+    "@klaus-liebler/web-components": "file:../web-components",
+    "lit-html": "^3.2.1"
+  }
+}

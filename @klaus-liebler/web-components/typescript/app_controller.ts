@@ -10,6 +10,7 @@ import { IAppManagement, IScreenControllerHost, IMessageListener } from "./utils
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
+import { HEADER_BACKGROUND_DATA_URL } from "./utils/header_background"
 
 
 class Router2ContentAdapter implements IRouteHandler {
@@ -257,8 +258,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   
   public Startup() {
     this.currentUsername = this.extractUsernameFromCookie();
-    const bg=`<svg viewBox="0 0 1440 360" xmlns="http://www.w3.org/2000/svg"><path fill="#9EAFFD" opacity="0.3" d="M0 432 V216 Q432 43.2 864 216 V432z" /><path fill="#9EAFFD" opacity="0.7" d="M0 432 V172.8 Q432 244.8 792 172.8 T1440 158.4 V432z" /></svg>`
-    const svgDataUrl = `data:image/svg+xml;base64,${btoa(bg)}`;
+    const svgDataUrl = HEADER_BACKGROUND_DATA_URL;
     const Template = html`
             <header style="background-image: url('${svgDataUrl}');">
               <span @click=${() => this.easteregg()}> ${this.appTitle} </span>

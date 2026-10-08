@@ -27,7 +27,7 @@ export function EventCoordinatesInSVG(evt:MouseEvent, element:Element, positionR
     export function ColorNumColor2ColorDomString(num:number):string {
         num=num>>8; //as format is RGBA
         let str = num.toString(16);
-        while (str.length < 6) str = "0" + num;
+        while (str.length < 6) str = "0" + str;
         return "#"+str;
     }
 
@@ -100,7 +100,8 @@ export function EventCoordinatesInSVG(evt:MouseEvent, element:Element, positionR
         let tr=Html(table, "tr", [],["develop-propertygrid-tr"]);
         Html(tr, "td", [],["develop-propertygrid-td"], key);
         let inputContainer = Html(tr, "td", [],["develop-propertygrid-td"]);
-        return <HTMLInputElement>Html(inputContainer, "input", ["type", "number", "value", ""+value,]);
+        //step=any: sonst waere jeder nicht-ganzzahlige Wert per Constraint Validation "ungueltig"
+        return <HTMLInputElement>Html(inputContainer, "input", ["type", "number", "step", "any", "value", ""+value,]);
     }
 
     export function InputSelect(table:HTMLTableSectionElement, displayValueAndKeyvalues:StringNumberTuple[], key:string, cfg:KeyValueTuple[]|null):HTMLSelectElement
