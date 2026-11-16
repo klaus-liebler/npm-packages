@@ -136,9 +136,10 @@ export class OnOffApplication extends SensactApplication {
     this.on = false;
   }
 
+  // cOnOff::FillStatus: [1] = an/aus (s. Konvention in cApplication.hh), [0]/[2]/[3] = 0
   public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.on = state[0] != 0;
+    this.on = state[1] != 0;
   }
 
   private oninput() {
@@ -171,9 +172,10 @@ export class BlindsTimerApplication extends SensactApplication {
        <input ${ref(this.inputElement)} @input=${() => this.oninput()} type="checkbox"></input>
   `
 
+  // cBlindsTimer::FillStatus: [1] = Timer aktiv
   public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.inputElement.value!.checked = state[0] != 0;
+    this.inputElement.value!.checked = state[1] != 0;
   }
 
   private oninput() {
@@ -262,15 +264,9 @@ export class SinglePwmApplication extends SensactApplication {
     cmd.SendTOGGLECommand(this.applicationId, this.ctx);
     console.log(`${fb.ApplicationId[this.applicationId]} got TOGGLEd`);
   }
-  /*
-  eAppCallResult cSinglePWM::FillStatus(iSensactContext &ctx, std::array<uint16_t, 4>& buf){
-      buf[0]=currentLevel==0?0:1; // 1=ON, 0=OFF
-      buf[1]=currentLevel;
-      buf[2]=autoDim;
-      buf[3]=targetLevel;;
-      return eAppCallResult::OK;
-    }
-  */
+  // cSinglePWM::FillStatus: [0] an/aus (targetLevel != 0), [1] storedLevel (0..65535),
+  // [2] autoDim-Richtung (-1/0/+1 als uint16), [3] targetLevel (0..65535).
+  // Vollstaendige Status-Tabelle aller Apps: sensact/espidf-components/sensact-applicationmodel/README.md
 
   public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
@@ -390,8 +386,8 @@ export class SoundApplication extends SensactApplication {
 
   public UpdateState(state: Uint16Array) {
     this.ConfirmSuccessfulWrite();
-    this.isPlaying = state[0] == 2;
-    this.volume = state[1];
+    this.isPlaying = state[0] != 0; // [0] isPlayingMP3 (0/1)
+    this.volume = state[2];         // [2] currentVolume ([1] ist der zuletzt gespielte Sound)
     this.muted = state[3] != 0;
     if (Date.now() - this.lastUserInteraction > 3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
       this.sliderElement.value!.valueAsNumber = this.volume;
