@@ -58,9 +58,7 @@ export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogH
     }
 
     public SaveToServer():void{
-        const bytes = scheduler.RequestSchedulerSave.encode({
-            requestId: 0,
-            payload: {
+        const bytes = scheduler.RequestSchedulerSave.encode({ payload: {
                 classId: scheduler.Schedule.CLASS_ID,
                 name: this.name,
                 schedule: {
@@ -68,8 +66,7 @@ export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogH
                     offsetMinutes: this.offsetMinutes,
                     randomMinutes: this.randomMinutes,
                 },
-            },
-        });
+            }, }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
@@ -100,18 +97,18 @@ export class SunRandomSchedule extends ScheduleItem implements iSunRandomDialogH
     }
 
     private btnEditClicked() {
-        const bytes = scheduler.RequestSchedulerOpen.encode({ requestId: 0, name: this.name, type: scheduler.ScheduleType.SUN_RANDOM });
+        const bytes = scheduler.RequestSchedulerOpen.encode({ name: this.name, type: scheduler.ScheduleType.SUN_RANDOM }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnDeleteClicked() {
-        const bytes = scheduler.RequestSchedulerDelete.encode({ requestId: 0, name: this.name });
+        const bytes = scheduler.RequestSchedulerDelete.encode({ name: this.name }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private handleRenameDialog(ok:boolean, newName:string){
         if(!ok) return;
-        const bytes = scheduler.RequestSchedulerRename.encode({ requestId: 0, oldName: this.name, newName });
+        const bytes = scheduler.RequestSchedulerRename.encode({ oldName: this.name, newName }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
@@ -155,33 +152,30 @@ export class OneWeekIn15MinutesSchedule extends ScheduleItem implements iWeeklyS
     }
 
     public SaveToServer():void{
-        const bytes = scheduler.RequestSchedulerSave.encode({
-            requestId: 0,
-            payload: {
+        const bytes = scheduler.RequestSchedulerSave.encode({ payload: {
                 classId: scheduler.Schedule.CLASS_ID,
                 name: this.name,
                 schedule: {
                     classId: scheduler.OneWeekIn15Minutes.CLASS_ID,
                     data: { v: this.value },
                 },
-            },
-        });
+            }, }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnEditClicked(_e:MouseEvent){
-        const bytes = scheduler.RequestSchedulerOpen.encode({ requestId: 0, name: this.name, type: scheduler.ScheduleType.ONE_WEEK_IN_15_MINUTES });
+        const bytes = scheduler.RequestSchedulerOpen.encode({ name: this.name, type: scheduler.ScheduleType.ONE_WEEK_IN_15_MINUTES }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private btnDeleteClicked(_e:MouseEvent) {
-        const bytes = scheduler.RequestSchedulerDelete.encode({ requestId: 0, name: this.name });
+        const bytes = scheduler.RequestSchedulerDelete.encode({ name: this.name }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
     private handleRenameDialog(ok:boolean, newName:string){
         if(!ok) return;
-        const bytes = scheduler.RequestSchedulerRename.encode({ requestId: 0, oldName: this.name, newName });
+        const bytes = scheduler.RequestSchedulerRename.encode({ oldName: this.name, newName }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
@@ -550,7 +544,7 @@ export class SchedulerScreenController extends ScreenController {
 
 
     public sendRequestDeleteSchedule(name: string) {
-        const bytes = scheduler.RequestSchedulerDelete.encode({ requestId: 0, name });
+        const bytes = scheduler.RequestSchedulerDelete.encode({ name }, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 
@@ -605,7 +599,7 @@ export class SchedulerScreenController extends ScreenController {
     }
 
     private onStart_or_onRestart_or_onUpdateClicked(){
-        const bytes = scheduler.RequestSchedulerList.encode({ requestId: 0 });
+        const bytes = scheduler.RequestSchedulerList.encode({}, 0);
         this.appManagement.SendFrame(scheduler.NAMESPACE_ID, bytes);
     }
 

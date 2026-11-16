@@ -24,12 +24,12 @@ export class SystemController extends ScreenController {
     private tblParameters:Ref<HTMLTableSectionElement> = createRef();
 
     private sendRequestRestart() {
-        const bytes = systeminfo.RequestRestart.encode({ requestId: 0 });
+        const bytes = systeminfo.RequestRestart.encode({}, 0);
         this.appManagement.SendFrame(systeminfo.NAMESPACE_ID, bytes);
     }
 
     private sendRequestSystemdata() {
-        const bytes = systeminfo.RequestSystemData.encode({ requestId: 0 });
+        const bytes = systeminfo.RequestSystemData.encode({}, 0);
         this.appManagement.SendFrame(systeminfo.NAMESPACE_ID, bytes, 30000);
     }
 

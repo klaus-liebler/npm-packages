@@ -10,13 +10,10 @@ export class JournalHandler extends NamespaceAndHandler {
             case journal.RequestJournal.TYPE_ID:{
                 const req = journal.RequestJournal.decode(view, 0);
                 const now = Math.floor(Date.now()/1000);
-                sender.send(journal.ResponseJournal.encode({
-                    requestId: req.requestId,
-                    journalItems: [
+                sender.respond(journal.ResponseJournal.encode, { journalItems: [
                         { classId: journal.JournalItem.CLASS_ID, lastMessageTimestamp: now-3600, messageCode: 1, messageString: "An Entry", messageData: 42, messageCount: 1 },
                         { classId: journal.JournalItem.CLASS_ID, lastMessageTimestamp: now, messageCode: 2, messageString: "A second Entry", messageData: 42, messageCount: 1 },
-                    ],
-                }));
+                    ], });
                 break;
             }
         }

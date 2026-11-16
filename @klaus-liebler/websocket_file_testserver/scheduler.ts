@@ -34,7 +34,7 @@ export class SchedulerHandler extends NamespaceAndHandler {
             case scheduler.RequestSchedulerList.TYPE_ID: {
                 const req = scheduler.RequestSchedulerList.decode(view, 0);
                 const items = [...exampleSchedules].map(([name, s]) => ({ classId: scheduler.SchedulerListItem.CLASS_ID, name, type: scheduleType(s) } as const));
-                sender.send(scheduler.ResponseSchedulerList.encode({ requestId: req.requestId, items }));
+                sender.respond(scheduler.ResponseSchedulerList.encode, { items });
                 break;
             }
             case scheduler.RequestSchedulerOpen.TYPE_ID: {
@@ -44,10 +44,7 @@ export class SchedulerHandler extends NamespaceAndHandler {
                 if (s.classId == scheduler.OneWeekIn15Minutes.CLASS_ID) {
                     console.log(`Send OneWeekIn15Minutes "${req.name}". Data bytes are ${numberArray2HexString(s.data.v)}`)
                 }
-                sender.send(scheduler.ResponseSchedulerOpen.encode({
-                    requestId: req.requestId,
-                    payload: { classId: scheduler.Schedule.CLASS_ID, name: req.name, schedule: s },
-                }));
+                sender.respond(scheduler.ResponseSchedulerOpen.encode, { payload: { classId: scheduler.Schedule.CLASS_ID, name: req.name, schedule: s }, });
                 break;
             }
             case scheduler.RequestSchedulerSave.TYPE_ID: {
@@ -57,7 +54,7 @@ export class SchedulerHandler extends NamespaceAndHandler {
                     console.log(`Got OneWeekIn15Minutes "${p.name}". Data bytes are ${numberArray2HexString(p.schedule.data.v)}`)
                 }
                 exampleSchedules.set(p.name, p.schedule);
-                sender.send(scheduler.ResponseSchedulerSave.encode({ requestId: req.requestId, name: p.name }));
+                sender.respond(scheduler.ResponseSchedulerSave.encode, { name: p.name });
                 break;
             }
             case scheduler.RequestSchedulerRename.TYPE_ID: {

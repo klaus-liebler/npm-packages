@@ -133,19 +133,18 @@ export class WifimanagerController extends ScreenController {
         }))
     }
 
-    // requestId wird bewusst konstant 0 gesendet -- der Client haelt zu jedem Zeitpunkt hoechstens
-    // eine Anfrage in Flight (s. lockingNamespaceId in AppController), braucht also kein eigenes
-    // Multiplexing ueber requestId. Server-seitig wird die requestId trotzdem korrekt durchgereicht
-    // (wichtig fuer die asynchron aus den Wifi-Events heraus verschickten ResponseWifiConnect-
-    // Nachrichten, s. webmanager.hh).
+    // Correlation 0 (second argument of encode()): the client has at most one request in flight
+    // (see lockingNamespaceId in AppController) and matches answers by namespace, not by correlation.
+    // The device copies the correlation into its answers all the same (also into the ResponseWifiConnect
+    // sent later from the wifi events, see webmanager.hh).
     private sendRequestWifiAccesspoints(forceNewSearch: boolean) {
-        const bytes = wifimanager.RequestNetworkInformation.encode({ requestId: 0, forceNewSearch });
+        const bytes = wifimanager.RequestNetworkInformation.encode({ forceNewSearch }, 0);
         this.appManagement.SendFrame(wifimanager.NAMESPACE_ID, bytes, 30000);
     }
 
     private sendRequestWifiConnect(ssid: string, password: string) {
         console.log(`sendRequestWifiConnect for ${ssid} with password ${password}`);
-        const bytes = wifimanager.RequestWifiConnect.encode({ requestId: 0, ssid, password });
+        const bytes = wifimanager.RequestWifiConnect.encode({ ssid, password }, 0);
         this.appManagement.SendFrame(wifimanager.NAMESPACE_ID, bytes, 30000);
     }
 
@@ -154,7 +153,7 @@ export class WifimanagerController extends ScreenController {
     }
 
     private sendRequestWifiDisconnect() {
-        const bytes = wifimanager.RequestWifiDisconnect.encode({ requestId: 0 });
+        const bytes = wifimanager.RequestWifiDisconnect.encode({}, 0);
         this.appManagement.SendFrame(wifimanager.NAMESPACE_ID, bytes, 30000);
     }
 

@@ -18,9 +18,7 @@ export class SystemHandler extends NamespaceAndHandler {
         switch (messageTypeId) {
             case systeminfo.RequestSystemData.TYPE_ID: {
                 const req = systeminfo.RequestSystemData.decode(view, 0);
-                sender.send(systeminfo.ResponseSystemData.encode({
-                    requestId: req.requestId,
-                    secondsEpoch: Math.floor(Date.now() / 1000),
+                sender.respond(systeminfo.ResponseSystemData.encode, { secondsEpoch: Math.floor(Date.now() / 1000),
                     secondsUptime: 10,
                     freeHeap: 1203,
                     macAddressWifiSta: MAC,
@@ -33,8 +31,7 @@ export class SystemHandler extends NamespaceAndHandler {
                     chipRevision: 3,
                     chipCores: 2,
                     chipTemperature: 23.4,
-                    partitions: [partition("Label0", 0, 0x10, 3072), partition("Label1", 1, 0x01, 16384)],
-                }));
+                    partitions: [partition("Label0", 0, 0x10, 3072), partition("Label1", 1, 0x01, 16384)], });
                 break;
             }
             case systeminfo.RequestRestart.TYPE_ID:

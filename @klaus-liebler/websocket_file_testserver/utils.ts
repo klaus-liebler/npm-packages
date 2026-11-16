@@ -5,31 +5,38 @@ import * as weso from "ws"
 import * as path from "node:path"
 import * as forge from "node-forge";
 import { PeerCertificate, TLSSocket } from "node:tls"
+import { encodeError, ErrorCode, type FrameHeader, HEADER_SIZE, readHeader } from "@generated/wsprotocol_ts/ws-protocol";
 
-// Wire-Format (BestBinaryBuffers, s. @generated/wsprotocol_ts): jeder Frame beginnt mit einem
-// 4-Byte-Kopf namespaceId:u16 + messageTypeId:u16 (little endian), gefolgt von der Nutzlast.
-// <namespace>.<Message>.encode() liefert bereits den kompletten Frame inkl. Kopf, decode(view, 0)
-// erwartet ihn ebenso -- der Server haengt also nichts an und schneidet nichts ab.
+// Wire format (BestBinaryBuffers, see @generated/wsprotocol_ts): every frame starts with the 8-byte header
+// namespaceId, messageTypeId, correlationId, flags (u16 LE each), then the payload. <namespace>.<Message>.encode()
+// returns the complete frame including the header, decode(view, 0) expects it as well.
+// A handler answers a request with sender.respond(X.encode, payload): the answer carries the request's
+// correlation (like the device's Responder) - handlers never touch the header. Pushes: sender.send(X.encode(p)).
+// A request no handler takes gets the error reply UnknownMessage, a handler that throws: Failed.
 //
 // Die Handler in diesem Paket importieren "@generated/wsprotocol_ts/ws-protocol". Namespace-/Typ-IDs
 // werden pro Projekt vergeben, deshalb muss das jeweilige Projekt seinen eigenen generierten Code
 // liefern: den Testserver mit "node --preserve-symlinks --import tsx ..." starten, dann werden
 // diese Importe (und "ws") aus den node_modules des Projekts aufgeloest.
 export interface ISender{
+    /** A frame as it is (pushes, events). */
     send(frame: Uint8Array):void;
+    /** The answer to the request being handled: 'encode' is the generated encode() of the response. */
+    respond<T>(encode: (payload: T, correlationId: number) => Uint8Array, payload: T):void;
+    /** An error reply to the request being handled (see ErrorCode in the generated protocol). */
+    error(code: number, message: string):void;
  }
 
 export abstract class NamespaceAndHandler{
     constructor(public readonly namespace:number){}
     protected sender?: ISender;
-    // 'view' umfasst den kompletten Frame inkl. 4-Byte-Kopf -> direkt an <Message>.decode(view, 0) geben.
+    // 'view': the complete frame including the header -> pass it directly to <Message>.decode(view, 0).
     public abstract Handle(messageTypeId: number, view: DataView, sender: ISender):void;
     public SetSender(sender: ISender){
         this.sender = sender;
     }
 }
 
-export const FRAME_HEADER_SIZE = 4;
 
 const WEBSERVER_PORT = 3000;
 const AUTHSERVER_PORT = 3001;
@@ -39,6 +46,8 @@ var current_ws: weso.WebSocket;
 var handlers: Array<NamespaceAndHandler> = new Array<NamespaceAndHandler>();
 
 class Sender implements ISender{
+    /** request: the header of the request being handled (none: a sender for pushes only). */
+    constructor(private readonly request?: FrameHeader){}
     public send(frame: Uint8Array){
         if(!current_ws || current_ws.readyState!=weso.WebSocket.OPEN){
             console.error("No websocket connection available to send data");
@@ -46,27 +55,38 @@ class Sender implements ISender{
         }
         current_ws.send(frame);
     }
+    public respond<T>(encode: (payload: T, correlationId: number) => Uint8Array, payload: T){
+        this.send(encode(payload, this.request?.correlationId ?? 0));
+    }
+    public error(code: number, message: string){
+        if(this.request && this.request.correlationId != 0) this.send(encodeError(this.request, code, message));
+    }
 }
 
 export function OnMessage(buffer: Buffer, ws: weso.WebSocket){
-    if(buffer.length < FRAME_HEADER_SIZE){
+    if(buffer.length < HEADER_SIZE){
         console.error(`Received frame with only ${buffer.length} bytes, ignoring it`);
         return;
     }
-    const ns = buffer.readUInt16LE(0);
-    const messageTypeId = buffer.readUInt16LE(2);
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.length);
+    const header = readHeader(view);
+    const ns = header.namespaceId;
+    const messageTypeId = header.messageTypeId;
     console.log(`Received frame length ${buffer.byteLength} for namespace ${ns}, messageTypeId ${messageTypeId}`);
     current_ws = ws;
     handlers.forEach(h=>{h.SetSender(sender);});
+    const reply = new Sender(header);
     const h =handlers.find(h=>h.namespace==ns);
     if(!h){
         console.error(`No handler registered for namespace ${ns}`);
+        reply.error(ErrorCode.UnknownMessage, "unknown message");
         return;
     }
     try{
-        h.Handle(messageTypeId, new DataView(buffer.buffer, buffer.byteOffset, buffer.length), sender);
+        h.Handle(messageTypeId, view, reply);
     }catch(e){
         console.error(`Handler for namespace ${ns} failed on messageTypeId ${messageTypeId}:`, e);
+        reply.error(ErrorCode.Failed, String(e));
     }
 }
 

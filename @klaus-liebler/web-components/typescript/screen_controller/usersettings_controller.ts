@@ -43,7 +43,7 @@ class ConfigGroupRT{
     </div>
     `}
     private sendRequestGetUserSettings() {
-        const bytes = usersettings.RequestGetUserSettings.encode({ requestId: 0, groupKey: this.groupCfg.Key });
+        const bytes = usersettings.RequestGetUserSettings.encode({ groupKey: this.groupCfg.Key }, 0);
         this.appManagement.SendFrame(usersettings.NAMESPACE_ID, bytes);
     }
 
@@ -53,7 +53,7 @@ class ConfigGroupRT{
             if(!v.HasAChangedValue()) continue;
             settings.push(v.BuildSettingsElement());
         }
-        const bytes = usersettings.RequestSetUserSettings.encode({ requestId: 0, groupKey: this.groupCfg.Key, settings });
+        const bytes = usersettings.RequestSetUserSettings.encode({ groupKey: this.groupCfg.Key, settings }, 0);
         this.appManagement.SendFrame(usersettings.NAMESPACE_ID, bytes);
     }
 

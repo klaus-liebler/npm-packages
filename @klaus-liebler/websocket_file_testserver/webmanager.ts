@@ -17,27 +17,22 @@ export class WebmanagerHandler extends NamespaceAndHandler {
             case wifimanager.RequestWifiConnect.TYPE_ID: {
                 const req = wifimanager.RequestWifiConnect.decode(view, 0);
                 const good = req.ssid == AP_GOOD;
-                sender.send(wifimanager.ResponseWifiConnect.encode({
-                    requestId: req.requestId,
-                    success: good,
+                sender.respond(wifimanager.ResponseWifiConnect.encode, { success: good,
                     ssid: good ? AP_GOOD : AP_BAD,
                     ip: good ? 0xFF101001 : 0,
                     netmask: good ? 0x10101002 : 0,
                     gateway: good ? 0xFF101003 : 0,
-                    rssi: -62,
-                }));
+                    rssi: -62, });
                 break;
             }
             case wifimanager.RequestWifiDisconnect.TYPE_ID: {
                 const req = wifimanager.RequestWifiDisconnect.decode(view, 0);
-                sender.send(wifimanager.ResponseWifiDisconnect.encode({ requestId: req.requestId }));
+                sender.respond(wifimanager.ResponseWifiDisconnect.encode, {});
                 break;
             }
             case wifimanager.RequestNetworkInformation.TYPE_ID: {
                 const req = wifimanager.RequestNetworkInformation.decode(view, 0);
-                sender.send(wifimanager.ResponseNetworkInformation.encode({
-                    requestId: req.requestId,
-                    hostname: "MyHostnameKL",
+                sender.respond(wifimanager.ResponseNetworkInformation.encode, { hostname: "MyHostnameKL",
                     ssidAp: "MySsidApKL",
                     passwordAp: "Password",
                     ipAp: 32,
@@ -54,8 +49,7 @@ export class WebmanagerHandler extends NamespaceAndHandler {
                         ap("AP -74dB Auth=0", -74, 0),
                         ap("AP -66dB Auth=0", -66, 0),
                         ap("AP -59dB Auth=0", -50, 0),
-                    ],
-                }));
+                    ], });
                 break;
             }
         }

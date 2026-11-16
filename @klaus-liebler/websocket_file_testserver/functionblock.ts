@@ -19,7 +19,7 @@ export class FunctionblockHandler extends NamespaceAndHandler {
         switch (messageTypeId) {
             case functionblock.RequestFbdRun.TYPE_ID: {
                 const req = functionblock.RequestFbdRun.decode(view, 0);
-                sender.send(functionblock.ResponseFbdRun.encode({ requestId: req.requestId }));
+                sender.respond(functionblock.ResponseFbdRun.encode, {});
                 break;
             }
             case functionblock.RequestDebugData.TYPE_ID: {
@@ -38,14 +38,11 @@ export class FunctionblockHandler extends NamespaceAndHandler {
                 var floatsCount = dv.getUint32(20, true);
                 var colorsCount = dv.getUint32(24, true);
                 //var operatorsCount = dv.getUint32(28, true);
-                sender.send(functionblock.ResponseDebugData.encode({
-                    requestId: req.requestId,
-                    debugInfoHash: hash,
+                sender.respond(functionblock.ResponseDebugData.encode, { debugInfoHash: hash,
                     bools: Array.from({ length: booleansCount }, () => ({ value: randomInt(0, 2) == 1 })),
                     integers: Array.from({ length: integersCount }, () => ({ value: randomInt(0, 100) })),
                     floats: Array.from({ length: floatsCount }, () => ({ value: randomInt(0, 100) })),
-                    colors: Array.from({ length: colorsCount }, () => ({ value: randomInt(0, 2000000000) })),
-                }));
+                    colors: Array.from({ length: colorsCount }, () => ({ value: randomInt(0, 2000000000) })), });
                 break;
             }
         }

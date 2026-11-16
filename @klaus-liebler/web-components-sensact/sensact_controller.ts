@@ -23,12 +23,9 @@ export class SensactController extends ScreenController implements ISensactConte
         const data = new Array<number>(8).fill(0);
         for (let i = 0; i < payloadArray.length && i < 8; i++) data[i] = payloadArray[i];
 
-        const bytes = sensact.RequestCommand.encode({
-            requestId: 0,
-            id,
+        const bytes = sensact.RequestCommand.encode({ id,
             cmd,
-            payload: { data, len: payloadArray.length },
-        });
+            payload: { data, len: payloadArray.length }, }, 0);
         this.appManagement.SendFrame(sensact.NAMESPACE_ID, bytes, 0);
     }
 

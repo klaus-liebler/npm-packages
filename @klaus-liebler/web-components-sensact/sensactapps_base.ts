@@ -67,7 +67,7 @@ export class ApplicationGroup {
     console.info(`sendRequestGetApplicationStatus for ids ${this.Apps.map(v => v.applicationId).join(",")}`);
 
     const ids = this.Apps.map(v => ({ value: v.applicationId }));
-    const bytes = fb.RequestStatus.encode({ requestId: 0, ids });
+    const bytes = fb.RequestStatus.encode({ ids }, 0);
     this.appManagement.SendFrame(fb.NAMESPACE_ID, bytes, 3000);
   }
 

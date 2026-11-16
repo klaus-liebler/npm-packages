@@ -9,12 +9,9 @@ export class HeaterExperimentHandler extends NamespaceAndHandler {
     public Handle(messageTypeId: number, view: DataView, sender: ISender) {
         if (messageTypeId != heaterexperiment.RequestHeater.TYPE_ID) return;
         const req = heaterexperiment.RequestHeater.decode(view, 0);
-        sender.send(heaterexperiment.ResponseHeater.encode({
-            requestId: req.requestId,
-            setpointTemperatureDegrees: randomInt(40, 60),
+        sender.respond(heaterexperiment.ResponseHeater.encode, { setpointTemperatureDegrees: randomInt(40, 60),
             actualTemperatureDegrees: randomInt(40, 60),
             heaterPowerPercent: randomInt(1, 20),
-            fanSpeedPercent: 25,
-        }));
+            fanSpeedPercent: 25, });
     }
 }

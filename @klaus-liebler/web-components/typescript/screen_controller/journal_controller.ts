@@ -52,7 +52,7 @@ export class JournalController extends ScreenController {
 
 
     sendRequestJournal(){
-        const bytes = journal.RequestJournal.encode({ requestId: 0 });
+        const bytes = journal.RequestJournal.encode({}, 0);
         this.appManagement.SendFrame(journal.NAMESPACE_ID, bytes);
     }
 

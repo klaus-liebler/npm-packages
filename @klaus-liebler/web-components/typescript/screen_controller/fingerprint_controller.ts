@@ -128,25 +128,25 @@ export class FingerprintScreenController extends ScreenController {
 
 
     public sendRequestDeleteFinger(name: string) {
-        const bytes = fingerprint.RequestDeleteFinger.encode({ requestId: 0, name });
+        const bytes = fingerprint.RequestDeleteFinger.encode({ name }, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private sendRequestStoreFingerTimetable(fingerIndex: number, scheduleName: string) {
         console.log(`sendRequestStoreFingerTimetable fingerIndex=${fingerIndex} scheduleName=${scheduleName}`)
-        const bytes = fingerprint.RequestStoreFingerSchedule.encode({ requestId: 0, fingerIndex, scheduleName });
+        const bytes = fingerprint.RequestStoreFingerSchedule.encode({ fingerIndex, scheduleName }, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private sendRequestStoreFingerAction(fingerIndex: number, actionIndex: number) {
         console.log(`sendRequestStoreFingerAction fingerIndex=${fingerIndex} actionIndex=${actionIndex}`)
-        const bytes = fingerprint.RequestStoreFingerAction.encode({ requestId: 0, fingerIndex, actionIndex });
+        const bytes = fingerprint.RequestStoreFingerAction.encode({ fingerIndex, actionIndex }, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
     private sendRequestRenameFinger(fingerIndex: number, oldName:string,  newName: string) {
         console.log(`sendRequestRenameFinger fingerIndex=${fingerIndex} newName=${newName}`)
-        const bytes = fingerprint.RequestRenameFinger.encode({ requestId: 0, oldName, newName });
+        const bytes = fingerprint.RequestRenameFinger.encode({ oldName, newName }, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 
@@ -318,7 +318,7 @@ export class FingerprintScreenController extends ScreenController {
     }
 
     private btnManualAction(actionIndex:number) {
-        const bytes = fingerprint.RequestFingerActionManually.encode({ requestId: 0, fingerIndex: 0, actionIndex });
+        const bytes = fingerprint.RequestFingerActionManually.encode({ fingerIndex: 0, actionIndex }, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
     btnUpdateFingers() {
@@ -330,24 +330,24 @@ export class FingerprintScreenController extends ScreenController {
                 return
             }
             console.log(`Send RequestEnrollNewFinger name=${name}`)
-            const bytes = fingerprint.RequestEnrollNewFinger.encode({ requestId: 0, name });
+            const bytes = fingerprint.RequestEnrollNewFinger.encode({ name }, 0);
             this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
         }))
     }
 
     btnFingerprintGetSensorInfo() {
-        const bytes = fingerprint.RequestFingerprintSensorInfo.encode({ requestId: 0 });
+        const bytes = fingerprint.RequestFingerprintSensorInfo.encode({}, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
     btnDeleteAll() {
         this.appManagement.ShowDialog(new OkCancelDialog(Severity.WARN, "Please confirm to DELETE ALL FINGERPRINTS", (ok: boolean) => {
             if (!ok) return;
-            const bytes = fingerprint.RequestDeleteAllFingers.encode({ requestId: 0 });
+            const bytes = fingerprint.RequestDeleteAllFingers.encode({}, 0);
             this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
         }))
     }
     btnCancelInstruction() {
-        const bytes = fingerprint.RequestCancelInstruction.encode({ requestId: 0 });
+        const bytes = fingerprint.RequestCancelInstruction.encode({}, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
     OnCreate(): void {
@@ -355,7 +355,7 @@ export class FingerprintScreenController extends ScreenController {
     }
 
     private sendRequestFingers() {
-        const bytes = fingerprint.RequestFingers.encode({ requestId: 0 });
+        const bytes = fingerprint.RequestFingers.encode({}, 0);
         this.appManagement.SendFrame(fingerprint.NAMESPACE_ID, bytes, 3000);
     }
 

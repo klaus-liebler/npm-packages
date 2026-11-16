@@ -9,7 +9,7 @@ export class ChatbotHandler extends NamespaceAndHandler {
         switch (messageTypeId) {
             case chatbot.RequestChat.TYPE_ID: {
                 const req = chatbot.RequestChat.decode(view, 0);
-                sender.send(chatbot.ResponseChat.encode({ requestId: req.requestId, text: "Hello " + req.text }));
+                sender.respond(chatbot.ResponseChat.encode, { text: "Hello " + req.text });
                 break;
             }
         }

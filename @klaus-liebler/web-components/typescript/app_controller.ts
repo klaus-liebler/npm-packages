@@ -10,6 +10,7 @@ import { IAppManagement, IScreenControllerHost, IMessageListener } from "./utils
 import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
+import { decodeError, FLAG_ERROR, HEADER_SIZE, readHeader } from "@generated/wsprotocol_ts/ws-protocol"
 import { HEADER_BACKGROUND_DATA_URL } from "./utils/header_background"
 
 
@@ -22,7 +23,7 @@ class Router2ContentAdapter implements IRouteHandler {
   }
 }
 
-// 'data' ist immer ein bereits vollstaendig gerahmter Frame (4-Byte-Kopf inkl.) -- AppController
+// 'data' ist immer ein bereits vollstaendig gerahmter Frame (8-Byte-Kopf inkl.) -- AppController
 // haengt selbst keinen Praefix mehr an, s. IAppManagement.SendFrame.
 class BufferedMessage {
   constructor(public data: Uint8Array, public namespaceId: number, public maxLockingTimeMs: number) { }
@@ -91,7 +92,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
       })
     })
   }
-  // 'bytes' ist bereits ein vollstaendig gerahmter Frame (4-Byte-Kopf namespaceId:u16+
+  // 'bytes' ist bereits ein vollstaendig gerahmter Frame (8-Byte-Kopf namespaceId:u16+
   // messageTypeId:u16 inkl., von <namespace>.<Message>.encode() geschrieben, oder -- fuer noch
   // nicht migrierte Flatbuffers-Consumer -- vom Aufrufer selbst zusammengesetzt) -- AppController
   // haengt selbst keinen weiteren Praefix mehr an.
@@ -129,10 +130,21 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   }
 
   private onWebsocketData(arrayBuffer: ArrayBuffer) {
+    if (arrayBuffer.byteLength < HEADER_SIZE) {
+      console.warn(`Frame too short for the header: ${arrayBuffer.byteLength} bytes`)
+      return;
+    }
     const view = new DataView(arrayBuffer);
-    const namespaceId = view.getUint16(0, true);
-    const messageTypeId = view.getUint16(2, true);
+    const header = readHeader(view);
+    const { namespaceId, messageTypeId } = header;
     console.debug(`A message of namespaceId ${namespaceId}/messageTypeId ${messageTypeId} with length ${arrayBuffer.byteLength} has arrived: ${ArrayBufferToHexString(arrayBuffer)} .`)
+    if (header.flags & FLAG_ERROR) {
+      // an error reply: not a message of that type for the listeners (the requests here carry correlation 0,
+      // so the device sends none - logged in case it does)
+      const e = decodeError(view);
+      console.warn(`Error reply ${e.code} from the device for namespaceId ${namespaceId}/messageTypeId ${messageTypeId}: ${e.message}`)
+      return;
+    }
     if (this.lockingNamespaceId==namespaceId) {
       clearTimeout(this.modalSpinnerTimeoutHandle)
       this.lockingNamespaceId = null

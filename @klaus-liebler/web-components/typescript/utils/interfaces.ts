@@ -22,7 +22,7 @@ export interface IHtmlRenderer {
 
 // Einheitlicher, protokoll-agnostischer Nachrichten-Listener -- ersetzt das vormalige
 // IWebsocketMessageListener(namespace, flatbuffers.ByteBuffer). 'view' ist der KOMPLETTE Frame
-// inkl. 4-Byte-Kopf (kein Slicing mehr durch AppController) -- jeder Consumer interpretiert seine
+// inkl. 8-Byte-Kopf (kein Slicing mehr durch AppController) -- jeder Consumer interpretiert seine
 // eigenen Bytes selbst (ws-protocol-Consumer rufen die generierten <namespace>.<Message>.decode()-
 // Funktionen direkt mit offset=0 auf; noch nicht migrierte Flatbuffers-Consumer wrappen sich ihr
 // eigenes flatbuffers.ByteBuffer aus view selbst, s. AppController-Kommentar).
@@ -36,7 +36,7 @@ export interface IScreenControllerHost {
 export interface IAppManagement {
     RegisterNamespace(listener: IMessageListener, namespaceId: number): (() => void);
     Unregister(listener: IMessageListener): void;
-    // 'bytes' ist immer ein bereits vollstaendig gerahmter Frame (4-Byte-Kopf inkl.) -- AppController
+    // 'bytes' ist immer ein bereits vollstaendig gerahmter Frame (8-Byte-Kopf inkl.) -- AppController
     // stellt selbst keinen Praefix mehr voran, jeder Aufrufer liefert fertige Bytes.
     SendFrame(namespaceId: number, bytes: Uint8Array, maxLockingTimeMs?: number): void;
     ShowSnackbar(severity: Severity, text: string): void;
