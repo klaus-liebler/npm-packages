@@ -1,0 +1,22 @@
+{
+  // Eigenstaendig (frueher von factory_in_a_box/firmware_factory_control_unit/tsconfig.base.json abgeleitet).
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": [],
+    "sourceMap": true,
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "experimentalDecorators": true,
+    // Lit-Decorators ohne "accessor": sonst ueberschatten Klassenfelder die Getter/Setter der Decorators
+    "useDefineForClassFields": false
+  },
+  "include": ["src", "vitest.config.ts"]
+}
