@@ -90,6 +90,13 @@ const ICONS = {
 	can: svg`<path d="M3 13h26M3 19h26" stroke=${O} stroke-width="2.5"/><rect x="6" y="6" width="6" height="5" fill=${SD}/><rect x="20" y="21" width="6" height="5" fill=${SD}/>`,
 	git: svg`<circle cx="9" cy="8" r="3.5" fill=${O} stroke=${OD}/><circle cx="9" cy="24" r="3.5" fill=${O} stroke=${OD}/><circle cx="23" cy="13" r="3.5" fill=${O} stroke=${OD}/><path d="M9 11.5v9M23 16.5c0 5-8 3-12 6" fill="none" stroke=${OD} stroke-width="2"/>`,
 	i2c: svg`<path d="M3 11h26M3 21h26" stroke=${T} stroke-width="2.5"/><rect x="6" y="13" width="5" height="6" fill=${SD}/><rect x="14" y="13" width="5" height="6" fill=${SD}/><rect x="22" y="13" width="5" height="6" fill=${SD}/>`,
+	wifi: svg`<path d="M3 12a19 19 0 0 1 26 0M7 16.5a13 13 0 0 1 18 0M11 21a7 7 0 0 1 10 0" fill="none" stroke=${B} stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="25.5" r="2.5" fill=${BD}/>`,
+	key: svg`<circle cx="10" cy="16" r="6" fill=${Y} stroke=${OD} stroke-width="1.5"/><circle cx="9" cy="16" r="2" fill="#fff"/><path d="M16 16h13M24 16v5M28 16v4" stroke=${OD} stroke-width="3"/>`,
+	house: svg`<path d="M4 15 16 4l12 11" fill="none" stroke=${RD} stroke-width="2.5" stroke-linejoin="round"/><path d="M7 14v14h18V14L16 6z" fill=${SL} stroke=${SD}/><rect x="13" y="19" width="6" height="9" fill=${O} stroke=${OD}/><rect x="9" y="16" width="3.5" height="3.5" fill=${BL} stroke=${SD}/>`,
+	book: svg`<path d="M5 6h9a3 3 0 0 1 3 3v18a3 3 0 0 0-3-3H5z" fill=${BL} stroke=${BD}/><path d="M27 6h-7a3 3 0 0 0-3 3v18a3 3 0 0 1 3-3h7z" fill="#fff" stroke=${BD}/><path d="M20 11h4M20 15h4M20 19h3" stroke=${SD} stroke-width="1.5"/>`,
+	light: svg`<path d="M10 13a6 6 0 1 1 12 0c0 3-3 5-3 8h-6c0-3-3-5-3-8z" fill=${Y} stroke=${OD}/><rect x="13" y="22" width="6" height="5" rx="1" fill=${S} stroke=${SD}/><path d="M16 1v3M5 6l2 2M27 6l-2 2" stroke=${OD} stroke-width="2"/>`,
+	user: svg`<circle cx="16" cy="11" r="6" fill=${S} stroke=${SD}/><path d="M5 28a11 9 0 0 1 22 0z" fill=${S} stroke=${SD}/>`,
+	logout: svg`<path d="M18 5H7v22h11" fill="none" stroke=${SD} stroke-width="2.5"/><path d="M13 16h14" stroke=${R} stroke-width="3"/><path d="M22 10l6 6-6 6" fill="none" stroke=${RD} stroke-width="3" stroke-linejoin="round"/>`,
 } as const;
 
 export type IconName = keyof typeof ICONS;

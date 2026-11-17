@@ -59,6 +59,12 @@ export interface ShellConfig {
 	hostLabel?: string;
 	connection?: ShellConnection;
 	notifications?: ShellNotifications;
+	/** The logged-in user in the title bar, with a logout button if logout is given. */
+	user?: { name: string; logout?: () => void };
+	/** Static text at the right end of the status bar, e.g. build information. */
+	statusInfo?: string;
+	/** Called on a click on the logo. */
+	onLogoClick?: () => void;
 }
 
 interface AppEntry extends RouteDef, WorkspaceDef {
@@ -330,12 +336,12 @@ export class AppShell extends LitElement {
 	}
 
 	private renderTitleBar(entry: AppEntry | undefined) {
-		const { productName, logoSvg, hostLabel, connection, notifications } = this.config;
+		const { productName, logoSvg, hostLabel, connection, notifications, user, onLogoClick } = this.config;
 		const ws = connection?.state();
 		const home = this.home;
 		return html`
 			<header class="tb">
-				${logoSvg ? html`<span class="tb-logo" title=${productName}>${unsafeHTML(logoSvg)}</span>` : nothing}
+				${logoSvg ? html`<span class="tb-logo" title=${productName} @click=${() => onLogoClick?.()}>${unsafeHTML(logoSvg)}</span>` : nothing}
 				<div class="tb-quick">
 					${home ? html`<button class="tb-btn" title=${home.title} @click=${() => this.go(home.path)}>${icon("home", 20)}</button>` : nothing}
 					<button class="tb-btn" title="Zurück" @click=${() => history.back()}>${icon("left", 18)}</button>
@@ -352,6 +358,8 @@ export class AppShell extends LitElement {
 						@click=${() => this.go(notifications.path)}>${icon("bell", 20)}${this.unseen ? html`<span class="tb-badge">${this.unseen > 99 ? "99+" : this.unseen}</span>` : nothing}</button>` : nothing}
 					<button class="tb-btn" title=${this.dark ? "Helle Darstellung" : "Dunkle Darstellung"} @click=${() => this.setDark(!this.dark)}>${icon("theme", 20)}</button>
 					<button class="tb-btn ${this.fullscreen ? "tb-on" : ""}" title="Vollbild" @click=${() => this.toggleFullscreen()}>${icon("fullscreen", 20)}</button>
+					${user ? html`<span class="tb-user" title="Angemeldet als ${user.name}">${icon("user", 18)}<span>${user.name}</span></span>
+						${user.logout ? html`<button class="tb-btn tb-logout" title="Abmelden" @click=${() => user.logout!()}>${icon("logout", 20)}</button>` : nothing}` : nothing}
 				</div>
 			</header>`;
 	}
@@ -365,6 +373,7 @@ export class AppShell extends LitElement {
 				${connection && ws ? html`<span class="sb-ws sb-ws-${ws}" title=${connection.title}><span class="sb-dot"></span>${AppShell.connText(ws)}</span>` : nothing}
 				${status && status.text ? html`<span class="sb-mode sb-mode-${status.kind}">${status.text}</span>` : ""}
 				${status?.extra ?? ""}
+				${this.config.statusInfo ? html`<span class="sb-right sb-info" title=${this.config.statusInfo}>${this.config.statusInfo}</span>` : nothing}
 			</footer>`;
 	}
 

@@ -9,6 +9,9 @@ export enum ControllerState {
 
 export abstract class ScreenController implements IMessageListener {
     private state=ControllerState.CREATED
+    // Das Element des Arbeitsbereichs in der Anwendungs-Shell (gesetzt, sobald er das erste Mal gezeigt
+    // wird): fuer setAppStatus/setAppRibbon aus @klaus-liebler/ui-shell und zum erneuten Rendern.
+    public WorkspaceElement: HTMLElement | null = null
     public get State(): ControllerState {
         return this.state; 
     }

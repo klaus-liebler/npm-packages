@@ -1,27 +1,97 @@
+// Rahmen der Weboberflaeche: die Anwendungs-Shell aus @klaus-liebler/ui-shell (Titelleiste mit
+// Verbindung, Benutzer, Hell/Dunkel, Vollbild; Arbeitsbereich-Umschalter mit Ribbon; Statusleiste),
+// gemeinsam mit factory_in_a_box. Jeder ScreenController wird ein Arbeitsbereich: ein eigenes
+// <screen-workspace>-Element, das die Shell beim Wechsel zeigt/versteckt (onShow/onHide ->
+// OnStartPublic/OnPausePublic). Die Reihenfolge von AddScreenController ist die im Umschalter, der
+// erste Bildschirm ist die Startseite.
+import "@klaus-liebler/ui-shell/ui/base.css"
+import "@klaus-liebler/ui-shell/ui/components.css"
+import "@klaus-liebler/ui-shell/shell/app-shell.ts"
 import "../style/app.css"
+import type { AppShell, ConnectionState, ShellNotifications } from "@klaus-liebler/ui-shell/shell/app-shell.ts"
+import type { WorkspaceApp } from "@klaus-liebler/ui-shell/shell/workspace-app.ts"
+import type { IconName } from "@klaus-liebler/ui-shell/shell/icons.ts"
+import { currentPath } from "@klaus-liebler/ui-shell/shell/router.ts"
 import { TemplateResult, html, render } from "lit-html";
 import { Ref, createRef, ref } from "lit-html/directives/ref.js";
-import { IChatbot } from "./utils/interfaces";
+import { IChatbot, ScreenWorkspaceOptions } from "./utils/interfaces";
 import { DialogController, OkDialog } from "./dialog_controller";
-import { DefaultScreenController, ScreenController } from "./screen_controller/screen_controller";
+import { ScreenController } from "./screen_controller/screen_controller";
 import { Html} from "./utils/common";
 import { MyFavouriteDateTimeFormat, Severity, severity2class, severity2symbol} from "@klaus-liebler/commons";
 import { IAppManagement, IScreenControllerHost, IMessageListener } from "./utils/interfaces";
-import RouterMenu, { IRouteHandler, Route } from "./utils/routermenu";
 import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
 import { decodeError, FLAG_ERROR, HEADER_SIZE, readHeader } from "@generated/wsprotocol_ts/ws-protocol"
-import { HEADER_BACKGROUND_DATA_URL } from "./utils/header_background"
 import { WEBUI_VERSION_URL } from "./utils/constants"
+import { FirmwareLog, isWarningOrError } from "./utils/firmware_log"
+import { TerminalScreenController, type TerminalCommand } from "./screen_controller/terminal_controller"
 
+/** Ein Bildschirm als Arbeitsbereich der Shell. */
+export interface ScreenWorkspace {
+  path: string;
+  title: string;
+  icon: IconName;
+  group: string;
+  description: string;
+  urlPattern: RegExp;
+  controller: ScreenController;
+}
 
-class Router2ContentAdapter implements IRouteHandler {
-  constructor(public readonly child: ScreenController, public readonly app: AppController) { }
-  handleRoute(params: RegExpMatchArray): void {
+// Haelt einen ScreenController in der Shell. Bei jedem Zeigen wird sein Template frisch gerendert
+// (wie frueher beim Wechsel im gemeinsamen <main>), dann OnStartPublic und SetParameter mit dem
+// Treffer des URL-Musters.
+export class ScreenWorkspaceElement extends HTMLElement implements WorkspaceApp {
+  controller!: ScreenController;
+  urlPattern!: RegExp;
 
-    console.log("Router2ContentAdapter->handleRoute")
-    this.app.SetMain(this.child, params)
+  onShow(): void {
+    this.controller.WorkspaceElement = this;
+    delete (this as unknown as { _$litPart$?: unknown })._$litPart$;
+    this.replaceChildren();
+    render(this.controller.Template(), this);
+    this.controller.OnStartPublic();
+    const match = currentPath().match(this.urlPattern);
+    if (match) this.controller.SetParameter(match);
   }
+
+  onHide(): void {
+    this.controller.OnPausePublic();
+  }
+}
+if (!customElements.get("screen-workspace")) customElements.define("screen-workspace", ScreenWorkspaceElement);
+
+/** Text einer Menue-Beschriftung wie html`<span>🧰</span><span>System Settings</span>`, ohne Tags und Emoji. */
+export function captionText(caption: TemplateResult): string {
+  const parts: string[] = [];
+  caption.strings.forEach((s, i) => {
+    parts.push(s);
+    const v = caption.values[i];
+    if (typeof v === "string" || typeof v === "number") parts.push(String(v));
+  });
+  return parts.join("")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#?\w+;/g, " ")
+    .replace(/[\p{Extended_Pictographic}\u2700-\u27BF\uFE0F]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Pfad des Arbeitsbereichs: aus einem festen Muster wie /^\/system$/, sonst "/" + url. */
+export function workspacePath(url: string, urlPattern: RegExp): string {
+  const source = urlPattern.source.split("\\/").join("/");
+  const m = /^\^(\/[\w\-/]*)\$$/.exec(source);
+  return m ? m[1] : "/" + url.replace(/^\/+/, "");
+}
+
+/** Was die Shell zusaetzlich zeigt. */
+export interface AppShellOptions {
+  /** Logo als SVG-Markup (Titelleiste). */
+  logoSvg?: string;
+  /** Neben dem Arbeitsbereich in der Titelleiste, z. B. der Knotenname. */
+  hostLabel?: string;
+  /** Glocke in der Titelleiste, z. B. Warnungen im Firmware-Log. */
+  notifications?: ShellNotifications;
 }
 
 // 'data' ist immer ein bereits vollstaendig gerahmter Frame (8-Byte-Kopf inkl.) -- AppController
@@ -31,7 +101,6 @@ class BufferedMessage {
 }
 
 export class AppController implements IAppManagement, IScreenControllerHost {
-  private routes: Array<Route> = []
 
   private namespaceId2listener = new Map<number, Array<IMessageListener>>();
   private lockingNamespaceId:number|null=null;
@@ -79,11 +148,9 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   private modalSpinnerTimeoutHandle: number = -1;
 
   private currentUsername: string = "";
-  private userMenuRef: Ref<HTMLDivElement> = createRef();
 
-  private menu = new RouterMenu("/", this.routes);
-  private mainContent: ScreenController = new DefaultScreenController(this);
-  private mainRef: Ref<HTMLInputElement> = createRef();
+  private readonly workspaces: ScreenWorkspace[] = [];
+  private readonly connectionListeners: Array<() => void> = [];
   
   private dialog: Ref<HTMLDivElement> = createRef();
   private snackbarTimeout: number = -1;
@@ -205,20 +272,63 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   }
 
 
-  public SetMain(child: ScreenController, params: RegExpMatchArray) {
-    this.mainContent.OnPausePublic();
-    this.mainContent = child
-    //this.mainRef.value!.innerText=""
-    render(this.mainContent.Template(), this.mainRef.value!)
-    this.mainContent.OnStartPublic();
-    child.SetParameter(params)
+  /** Die Arbeitsbereiche in der Reihenfolge des Umschalters (z. B. fuer eine Startseite mit Kacheln). */
+  public get Workspaces(): readonly ScreenWorkspace[] {
+    return this.workspaces;
   }
 
-  public AddScreenController(url: string, urlPattern: RegExp, caption: TemplateResult<1>, controllerObject: ScreenController){ 
-    var w = new Route(url, urlPattern, caption, new Router2ContentAdapter(controllerObject, this))
-    this.routes.push(w)
+  public AddScreenController(url: string, urlPattern: RegExp, caption: TemplateResult<1>, controllerObject: ScreenController, workspace: ScreenWorkspaceOptions = {}){
+    this.workspaces.push({
+      path: workspacePath(url, urlPattern),
+      title: workspace.title ?? (captionText(caption) || url),
+      icon: workspace.icon ?? "dashboard",
+      group: workspace.group ?? "Allgemein",
+      description: workspace.description ?? "",
+      urlPattern,
+      controller: controllerObject,
+    });
     controllerObject.OnCreate();
     return controllerObject
+  }
+
+  /**
+   * Firmware-Log (opt-in, die Firmware braucht das FirmwareLogPlugin des Webmanagers): Arbeitsbereich
+   * "Terminal" mit Log und Konsole, dazu die Glocke in der Titelleiste fuer neue Warnungen und Fehler.
+   * commands: zusaetzliche Konsolenbefehle des Projekts.
+   */
+  public AddTerminal(commands: TerminalCommand[] = [], workspace: ScreenWorkspaceOptions = {}): FirmwareLog {
+    const log = new FirmwareLog(this);
+    const pattern = new RegExp("^/terminal$");
+    this.AddScreenController("terminal", pattern, html`<span>Terminal</span>`, new TerminalScreenController(this, log, commands),
+      { title: "Terminal", icon: "terminal", group: "Diagnose", description: "Firmware-Log und Befehle", ...workspace });
+    this.shellOptions.notifications ??= {
+      initial: () => log.Entries.filter(isWarningOrError).length,
+      subscribe: (cb) => void log.Subscribe((added) => cb(added.filter(isWarningOrError).length)),
+      path: workspacePath("terminal", pattern),
+      title: (n) => (n ? `${n} neue Warnungen/Fehler im Firmware-Log` : "Firmware-Log"),
+    };
+    return log;
+  }
+
+  // ---- Verbindungsanzeige der Shell ----
+  private connectionState(): ConnectionState {
+    if (this.socket?.readyState === WebSocket.OPEN) return "open";
+    if (this.socket?.readyState === WebSocket.CONNECTING || this.reconnectTimeoutHandle >= 0) return "connecting";
+    return "closed";
+  }
+
+  /** Zustand der WebSocket-Verbindung (wie in der Titelleiste). */
+  public get ConnectionState(): ConnectionState {
+    return this.connectionState();
+  }
+
+  /** cb nach jeder Aenderung von ConnectionState, z. B. um nach dem Verbinden etwas anzufordern. */
+  public OnConnectionChange(cb: () => void): void {
+    this.connectionListeners.push(cb);
+  }
+
+  private connectionChanged(): void {
+    for (const l of this.connectionListeners) l();
   }
 
   public CloseConnection(): void {
@@ -289,37 +399,45 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     private readonly websocketUrl:string, 
     private readonly easterEggFn: ((canvas: HTMLCanvasElement) => void) | null = null, 
     private readonly additionalFooter:string="",
-    chatbot: IChatbot | null = null) {
+    chatbot: IChatbot | null = null,
+    private readonly shellOptions: AppShellOptions = {}) {
     this.chatbot = chatbot;
   }
 
   
   public Startup() {
     this.currentUsername = this.extractUsernameFromCookie();
-    const svgDataUrl = HEADER_BACKGROUND_DATA_URL;
     const Template = html`
-            <header style="background-image: url('${svgDataUrl}');">
-              <span @click=${() => this.easteregg()}> ${this.appTitle} </span>
-              <div class="user-info" ${ref(this.userMenuRef)}>
-                <span class="username">👤 ${this.currentUsername}</span>
-                <button class="logout-btn" @click=${() => this.logout()} title="Abmelden">Logout</button>
-              </div>
-            </header>
-            <nav>${this.menu.Template()}<a href="javascript:void(0);" @click=${() => this.menu.ToggleHamburgerMenu()}><i>≡</i></a></nav>
-            <main ${ref(this.mainRef)}></main>
-            <footer>Klaus Liebler, &copy;${new Date(1000*Number(cfg.CREATION_DT)).toLocaleString("de-DE", MyFavouriteDateTimeFormat)} :: GitHash ${cfg.GIT_SHORT_HASH} :: AppName ${cfg.APP_NAME} :: AppVersion ${cfg.APP_VERSION} ${this.additionalFooter}</footer>
+            <app-shell></app-shell>
             <div ${ref(this.modalSpinner)} class="modal"><span class="loader"></span></div>
-            <div id="snackbar">Some text some message..</div>
+            <div id="snackbar"></div>
             <div ${ref(this.dialog)}></div>
             ${this.chatbot ? this.chatbot.Template() : ""}`
     render(Template, document.body);
-    window.onresize=()=>{
-      this.menu.ShowHamburgerMenuIfLargeScreen()
-    };
+    const shell = document.body.querySelector("app-shell") as AppShell;
+    for (const w of this.workspaces) {
+      const el = document.createElement("screen-workspace") as ScreenWorkspaceElement;
+      el.controller = w.controller;
+      el.urlPattern = w.urlPattern;
+      shell.RegisterApp(w.path, w.title, w.icon, el, { group: w.group, description: w.description });
+    }
+    const created = new Date(1000 * Number(cfg.CREATION_DT)).toLocaleString("de-DE", MyFavouriteDateTimeFormat);
+    const extra = this.additionalFooter.replace(/^\s*::\s*/, "").trim();
+    shell.Start({
+      productName: this.appTitle,
+      logoSvg: this.shellOptions.logoSvg,
+      hostLabel: this.shellOptions.hostLabel,
+      notifications: this.shellOptions.notifications,
+      connection: {
+        state: () => this.connectionState(),
+        onChange: (cb) => { this.connectionListeners.push(cb); },
+        title: "WebSocket-Verbindung zum Geraet",
+      },
+      user: { name: this.currentUsername, logout: () => void this.logout() },
+      statusInfo: `${cfg.APP_NAME} ${cfg.APP_VERSION} · Git ${cfg.GIT_SHORT_HASH} · ${created}${extra ? " · " + extra : ""}`,
+      onLogoClick: this.easterEggFn ? () => this.easteregg() : undefined,
+    });
     this.connectWebsocket();
-    this.menu.check();
-    //this.chatbot.Setup();
-
   }
 
   // Baut die Websocket-Verbindung auf (initial UND fuer jeden Reconnect-Versuch).
@@ -336,9 +454,11 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     const socket = new WebSocket(this.websocketUrl)
     socket.binaryType = 'arraybuffer'
     this.socket = socket
+    this.connectionChanged();
     socket.onopen = (_event) => {
       console.log(`Websocket is connected.`)
       this.setModal(false);
+      this.connectionChanged();
       void this.reloadIfWebUiChanged();
       this.reconnectAttempts = 0;
       if (this.isCurrentlyDisconnected) {
@@ -370,6 +490,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
       }
       if (event.code == 1000) {
         console.info('The Websocket connection has been closed normally.')
+        this.connectionChanged();
         return
       }
       console.error(`Websocket has been closed unexpectedly: ${JSON.stringify(event)}`)
@@ -379,6 +500,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
       }
       this.setModal(true);
       this.scheduleReconnect();
+      this.connectionChanged();
     }
   }
 

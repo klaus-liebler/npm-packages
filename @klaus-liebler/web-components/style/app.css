@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css?family=Dosis:400,700");
 @import "./dialog.css";
 @import "./loader.css";
 
@@ -19,128 +18,18 @@
   padding: 0;
 }
 
-@media (max-width: 768px) {
-  body {
-    font: 16px/1.5 "Dosis", sans-serif;
-    padding: 0;
-    margin: 0;
-    overflow-x: hidden;
-    width: 100%;
-  }
-
-  body > nav {
-    overflow: hidden;
-    background: #333;
-    position: relative;
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 20px;
-  }
-
-  body > nav > ul {
-    display: none;
-    list-style-type: none;
-  }
-
-  body > nav > ul > li > a > span:nth-child(1) {
-    display: none;
-  }
-
-  body > nav a {
-    color: white;
-    padding: 14px 16px;
-    text-decoration: none;
-    font-size: 17px;
-    display: block;
-  }
-
-  body > nav > a > i {
-    color: white;
-    background: #333;
-    display: block;
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: 32px;
-    font-size: 30px;
-  }
+/* Rahmen: die Anwendungs-Shell (@klaus-liebler/ui-shell). Jeder ScreenController ist ein
+   <screen-workspace> in deren Arbeitsbereich (app_controller.ts). */
+screen-workspace {
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-@media (min-width: 769px) {
-  body {
-    font: 16px/1.5 "Dosis", sans-serif;
-    width: 100vw;
-    height: 100vh;
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    grid-template-rows: 60px 1fr 40px;
-    gap: 10px;
-    padding: 0;
-    margin: 0;
-  }
-
-  body > nav {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  body > nav > a {
-    display: none;
-  }
-
-  body > nav > ul {
-    display: block;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    background-color: #f1f1f1;
-  }
-
-  body > nav > ul > li > a {
-    display: flex;
-    color: #000;
-    padding: 8px 16px;
-    text-decoration: none;
-    flex-direction: row;
-    transition: color 0.2s ease-out;
-  }
-
-  body > nav > ul > li > a:hover {
-    color: red;
-  }
-
-  body > nav > ul > li > a > :nth-child(1) {
-    width: 30px;
-  }
-
-  body > header {
-    font-size: 28px;
-    font-weight: bold;
-    grid-column: 1 / 3;
-    padding: 10px;
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  body > footer {
-    background: var(--main-white-color);
-    grid-column: 1 / 3;
-    grid-row: 3;
-    overflow-y: hidden;
-    padding: 10px;
-  }
-
-  body > main {
-    grid-column: 2;
-    grid-row: 2;
-    overflow-y: scroll;
-    padding-right: 10px;
-  }
-}
+/* Dialoge liegen im Top-Layer ausserhalb der seitenweiten Invertierung des Dunkelmodus (ui-shell
+   base.css) und invertieren sich deshalb selbst. */
+html[data-theme="dark"] dialog { filter: invert(0.93) hue-rotate(180deg); }
+html[data-theme="dark"] dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 
 #scroller * {
   overflow-anchor: none;
@@ -300,15 +189,15 @@ div.buttons {
   margin: 10px 0;
 }
 
-/* Vereinheitlichte Button-Formatierung fuer die Screen-Controller-Inhalte (body > main).
+/* Vereinheitlichte Button-Formatierung fuer die Screen-Controller-Inhalte (screen-workspace).
    <button> und <input type="button"> hatten bisher ueberhaupt keine eigene Groesse/Formatierung
    (nackter Browser-Default) -- dadurch wirkten sie insgesamt zu klein und je nachdem, ob ein Icon
    dabei war (button.withsvg) oder nicht, deutlich unterschiedlich gross/formatiert. Bewusst auf
-   "body > main" beschraenkt, NICHT global: Dialoge (dialog.css) und der Logout-Button im Header
+   "screen-workspace" beschraenkt, NICHT global: Dialoge (dialog.css) und der Logout-Button im Header
    (.logout-btn) haben schon eine eigene, in sich konsistente Formatierung, die hier nicht
    ueberschrieben werden soll. */
-body > main button,
-body > main input[type="button"] {
+screen-workspace button,
+screen-workspace input[type="button"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -326,19 +215,19 @@ body > main input[type="button"] {
   transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.1s ease-out;
 }
 
-body > main button:hover,
-body > main input[type="button"]:hover {
+screen-workspace button:hover,
+screen-workspace input[type="button"]:hover {
   background-color: #e6e6e6;
   border-color: #888;
 }
 
-body > main button:active,
-body > main input[type="button"]:active {
+screen-workspace button:active,
+screen-workspace input[type="button"]:active {
   transform: scale(0.97);
 }
 
-body > main button:disabled,
-body > main input[type="button"]:disabled {
+screen-workspace button:disabled,
+screen-workspace input[type="button"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -348,13 +237,13 @@ body > main input[type="button"]:disabled {
    Formatierungsziel (konsistent, nicht zu klein), 1:1 dieselben Werte wie oben. Modernes
    ::file-selector-button (Standard) UND das aeltere WebKit-Pendant fuer Chromium-Versionen, die
    den Standard-Namen noch nicht kennen. */
-body > main input[type="file"] {
+screen-workspace input[type="file"] {
   font: inherit;
   font-size: 15px;
 }
 
-body > main input[type="file"]::file-selector-button,
-body > main input[type="file"]::-webkit-file-upload-button {
+screen-workspace input[type="file"]::file-selector-button,
+screen-workspace input[type="file"]::-webkit-file-upload-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -373,8 +262,8 @@ body > main input[type="file"]::-webkit-file-upload-button {
   transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.1s ease-out;
 }
 
-body > main input[type="file"]::file-selector-button:hover,
-body > main input[type="file"]::-webkit-file-upload-button:hover {
+screen-workspace input[type="file"]::file-selector-button:hover,
+screen-workspace input[type="file"]::-webkit-file-upload-button:hover {
   background-color: #e6e6e6;
   border-color: #888;
 }
@@ -437,73 +326,6 @@ div.accordion > div > table {
   margin: 0;
 }
 
-/* User Header Styles */
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-
-.username {
-  color: #333;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: color 0.2s ease-out;
-}
-
-.username:hover {
-  color: #0066cc;
-}
-
-.logout-btn {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease-out, transform 0.1s ease-out;
-  white-space: nowrap;
-}
-
-.logout-btn:hover {
-  background-color: #c82333;
-}
-
-.logout-btn:active {
-  transform: scale(0.98);
-}
-
-@media (max-width: 768px) {
-  .user-info {
-    gap: 8px;
-  }
-
-  .logout-btn {
-    padding: 5px 10px;
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .username {
-    display: none;
-  }
-
-  .user-info {
-    gap: 4px;
-  }
-
-  .logout-btn {
-    padding: 4px 8px;
-    font-size: 11px;
-  }
-}
-
 /* Nodemaster Controller input value styling */
 .input-value-zero {
   background-color: #333333;
@@ -516,3 +338,40 @@ div.accordion > div > table {
   color: white;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* Startseite mit Kacheln (overview_controller.ts) */
+screen-workspace .ws-tiles-group { margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--ui-color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+screen-workspace .ws-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+screen-workspace .ws-tile { display: grid; grid-template-columns: 48px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 10px; min-height: 72px; padding: 10px 12px; text-align: left; background: var(--ui-color-bg-surface); border: 1px solid var(--ui-color-border-soft); border-radius: var(--ui-radius-lg); box-shadow: var(--ui-shadow-card); color: var(--ui-color-text-primary); cursor: pointer; }
+screen-workspace .ws-tile:hover { border-color: var(--ui-color-accent); background: var(--ui-color-accent-soft); }
+screen-workspace .ws-tile > svg { grid-row: 1 / 3; }
+screen-workspace .ws-tile-title { font-weight: 600; font-size: 15px; }
+screen-workspace .ws-tile-desc { font-weight: 400; font-size: 12px; color: var(--ui-color-text-muted); }
+
+/* Terminal: Firmware-Log und Konsole (terminal_controller.ts), fuellt den Arbeitsbereich */
+screen-workspace:has(> .term) { height: 100%; padding: 0; }
+screen-workspace .term { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+screen-workspace .term-toolbar { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--ui-color-border-soft); background: var(--ui-color-bg-surface); }
+screen-workspace .term-toolbar input { width: 280px; }
+screen-workspace .term-hint { font-size: 12px; color: var(--ui-color-text-muted); }
+screen-workspace .term-log { flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--ui-color-bg-surface); }
+screen-workspace .term-table { width: 100%; border-collapse: collapse; font: 12px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+screen-workspace .term-table tr { background: transparent; }
+screen-workspace .term-table td { padding: 1px 8px; border: none; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
+screen-workspace .term-table td.term-time, screen-workspace .term-table td.term-level, screen-workspace .term-table td.term-tag { white-space: nowrap; color: var(--ui-color-text-muted); }
+screen-workspace .term-table td.term-text { width: 100%; }
+screen-workspace .term-l0 td { color: var(--ui-color-accent-text); font-style: italic; }
+screen-workspace .term-l1 { background: #fdecec !important; }
+screen-workspace .term-l1 td { color: #b91c1c; }
+screen-workspace .term-l2 { background: #fff7e0 !important; }
+screen-workspace .term-l2 td { color: #92400e; }
+screen-workspace .term-l4 td, screen-workspace .term-l5 td { color: var(--ui-color-text-muted); }
+screen-workspace .term-console { flex: 0 0 auto; display: flex; flex-direction: column; height: 180px; background: #1e1e1e; color: #d4d4d4; font: 13px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; border-top: 1px solid #000; }
+screen-workspace .term-out { flex: 1 1 auto; overflow: auto; padding: 4px 10px; }
+screen-workspace .term-out > div { white-space: pre-wrap; }
+screen-workspace .term-in { color: #9cdcfe; }
+screen-workspace .term-err { color: #f48771; }
+screen-workspace .term-prompt { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-top: 1px solid #333; }
+screen-workspace .term-prompt span { color: #4ec9b0; }
+screen-workspace .term-prompt input { flex: 1; background: transparent; border: none; outline: none; color: inherit; font: inherit; }
+html[data-theme="dark"] screen-workspace .term-console { filter: invert(1) hue-rotate(180deg); }

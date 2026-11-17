@@ -3,6 +3,7 @@ import { DialogController } from "../dialog_controller";
 import { TemplateResult } from "lit-html";
 import { ScreenController } from "../screen_controller/screen_controller";
 import { Severity } from "@klaus-liebler/commons";
+import type { IconName } from "@klaus-liebler/ui-shell/shell/icons.ts";
 
 export interface IChatbot {
   Template(): TemplateResult | string;
@@ -29,8 +30,18 @@ export interface IHtmlRenderer {
 export interface IMessageListener {
     OnMessage(namespaceId: number, messageTypeId: number, view: DataView): void;
 }
+// Wie ein Bildschirm im Arbeitsbereich-Umschalter der Anwendungs-Shell (@klaus-liebler/ui-shell)
+// erscheint. Fehlende Angaben: Titel aus der Beschriftung (ohne Emoji), Symbol "dashboard",
+// Gruppe "Allgemein".
+export interface ScreenWorkspaceOptions {
+    title?: string;
+    icon?: IconName;
+    group?: string;
+    description?: string;
+}
+
 export interface IScreenControllerHost {
-   AddScreenController(url: string, urlPattern: RegExp, caption: TemplateResult<1>, controller:ScreenController):void;
+   AddScreenController(url: string, urlPattern: RegExp, caption: TemplateResult<1>, controller:ScreenController, workspace?: ScreenWorkspaceOptions):void;
 }
 
 export interface IAppManagement {

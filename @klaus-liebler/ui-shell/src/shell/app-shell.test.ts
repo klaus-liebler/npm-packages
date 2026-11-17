@@ -90,6 +90,18 @@ describe("app-shell", () => {
 		expect(shell.querySelector(".ws-switcher-menu")).toBeNull();
 	});
 
+	it("shows the user with logout, the status info and reacts to the logo", async () => {
+		const { shell } = await setup();
+		let loggedOut = 0, logo = 0;
+		shell.Start({ productName: "Test", logoSvg: "<svg></svg>", user: { name: "admin", logout: () => loggedOut++ }, statusInfo: "Build abc123", onLogoClick: () => logo++ });
+		await shell.updateComplete;
+		expect(shell.querySelector(".tb-user")?.textContent?.trim()).toBe("admin");
+		(shell.querySelector(".tb-logout") as HTMLButtonElement).click();
+		(shell.querySelector(".tb-logo") as HTMLElement).click();
+		expect([loggedOut, logo]).toEqual([1, 1]);
+		expect(shell.querySelector(".sb-info")?.textContent).toBe("Build abc123");
+	});
+
 	it("collapses the ribbon (Ansicht tab or double click) and expands it with a tab click", async () => {
 		const { shell } = await setup();
 		const tabs = () => [...shell.querySelectorAll(".rb-tab")] as HTMLButtonElement[];
