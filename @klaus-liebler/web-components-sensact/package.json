@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@generated/wsprotocol_ts": "file:../../../sensact/firmware/sensact_firmware/generated/wsprotocol_ts",
+    "@generated/sensact_applicationids": "file:../../../sensact/firmware/sensact_firmware/generated/sensact_applicationids",
     "@generated/sensact_sendCommandImplementation": "file:../../../sensact/firmware/sensact_firmware/generated/sensact_sendCommandImplementation",
     "@klaus-liebler/commons": "file:../commons",
     "@klaus-liebler/sensact-base": "file:../sensact-base",

@@ -149,8 +149,10 @@ export class SystemController extends ScreenController {
             .then(async (response) => {
                 const text = await response.text();
                 if (response.ok) {
-                    this.lblPackage.value!.textContent = text + " - reloading...";
-                    setTimeout(() => window.location.reload(), 1500);
+                    // Paket mit Stationskonfiguration: das Geraet startet neu -> laenger warten
+                    const restarting = text.includes("restart");
+                    this.lblPackage.value!.textContent = text + (restarting ? " - device restarts, reloading in a few seconds..." : " - reloading...");
+                    setTimeout(() => window.location.reload(), restarting ? 12000 : 1500);
                 } else {
                     this.lblPackage.value!.textContent = "";
                     this.btnPackage.value!.disabled = false;

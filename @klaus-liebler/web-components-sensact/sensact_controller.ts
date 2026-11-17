@@ -13,12 +13,13 @@ import { sensact } from "@generated/wsprotocol_ts/ws-protocol";
 import { ISensactContext } from "@klaus-liebler/sensact-base/interfaces";
 import { IAppManagement } from "@klaus-liebler/web-components/typescript/utils/interfaces";
 import  "@klaus-liebler/commons"
+import { ApplicationId } from "@generated/sensact_applicationids/applicationIds";
 
 
 export class SensactController extends ScreenController implements ISensactContext {
 
 
-    public SendCommandMessage(id: sensact.ApplicationId, cmd: sensact.Command, payload: DataView) {
+    public SendCommandMessage(id: ApplicationId, cmd: sensact.Command, payload: DataView) {
         const payloadArray = Array.from(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength));
         const data = new Array<number>(8).fill(0);
         for (let i = 0; i < payloadArray.length && i < 8; i++) data[i] = payloadArray[i];

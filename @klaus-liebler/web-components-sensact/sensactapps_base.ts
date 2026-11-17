@@ -7,6 +7,7 @@ import * as cmd from "@generated/sensact_sendCommandImplementation/sendCommandIm
 import { ISensactContext } from '@klaus-liebler/sensact-base/interfaces';
 import { unsafeSVG } from "lit-html/directives/unsafe-svg.js";
 import lightbulb from '@klaus-liebler/svgs/solid/lightbulb.svg?raw';
+import { ApplicationId } from "@generated/sensact_applicationids/applicationIds";
 
 export enum SyncState {
   NODATA,
@@ -105,7 +106,7 @@ export abstract class SensactApplication {
 
   public abstract UpdateState(state: Uint16Array):void;
 
-  constructor(public readonly applicationId: fb.ApplicationId, public readonly ApplicationDescription: string, public readonly ctx: ISensactContext) { }
+  constructor(public readonly applicationId: ApplicationId, public readonly ApplicationDescription: string, public readonly ctx: ISensactContext) { }
 
 
   protected abstract CoreAppHtmlTemplate: () => TemplateResult<1>;
@@ -113,7 +114,7 @@ export abstract class SensactApplication {
   public OverallTemplate = () => html`
   <tr class="app">
       <td>${this.ApplicationDescription}</td>
-      <td>${fb.ApplicationId[this.applicationId]}${this.syncState == SyncState.SYNCHRONIZED ? "(sync)" : "(no sync)"}</td>
+      <td>${ApplicationId[this.applicationId]}${this.syncState == SyncState.SYNCHRONIZED ? "(sync)" : "(no sync)"}</td>
       <td style="display:flex;align-items:center">${this.CoreAppHtmlTemplate()}</td>
   </tr>
   `
@@ -217,22 +218,22 @@ export class BlindApplication extends SensactApplication {
     this.ConfirmSuccessfulWrite();
     this.movement = <eCurrentBlindState>state[0];
     this.positionAsPercentage = state[1];
-    console.log(`${fb.ApplicationId[this.applicationId]} recvs  ${eCurrentBlindState[state[0]]}, POS%: ${this.positionAsPercentage}%`);
+    console.log(`${ApplicationId[this.applicationId]} recvs  ${eCurrentBlindState[state[0]]}, POS%: ${this.positionAsPercentage}%`);
   }
 
   onStop() {
     cmd.SendSTOPCommand(this.applicationId, this.ctx);
-    console.log(`${fb.ApplicationId[this.applicationId]} sends stop! `);
+    console.log(`${ApplicationId[this.applicationId]} sends stop! `);
   }
 
   onUp() {
     cmd.SendUPCommand(this.applicationId, 0, this.ctx);
-    console.log(`${fb.ApplicationId[this.applicationId]}} sends up! `);
+    console.log(`${ApplicationId[this.applicationId]}} sends up! `);
   }
 
   onDown() {
     cmd.SendDOWNCommand(this.applicationId, 0, this.ctx);
-    console.log(`${fb.ApplicationId[this.applicationId]}} sends down! `);
+    console.log(`${ApplicationId[this.applicationId]}} sends down! `);
   }
 
   protected CoreAppHtmlTemplate = () => html`
@@ -262,7 +263,7 @@ export class SinglePwmApplication extends SensactApplication {
   private oninput(_e: MouseEvent) {
     //const _b = e.currentTarget as HTMLButtonElement;
     cmd.SendTOGGLECommand(this.applicationId, this.ctx);
-    console.log(`${fb.ApplicationId[this.applicationId]} got TOGGLEd`);
+    console.log(`${ApplicationId[this.applicationId]} got TOGGLEd`);
   }
   // cSinglePWM::FillStatus: [0] an/aus (targetLevel != 0), [1] storedLevel (0..65535),
   // [2] autoDim-Richtung (-1/0/+1 als uint16), [3] targetLevel (0..65535).
@@ -275,15 +276,15 @@ export class SinglePwmApplication extends SensactApplication {
     if (Date.now() - this.lastUserInteraction > 3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
       this.sliderElement.value!.valueAsNumber = Math.floor(this.level/this.MULTIPLIER);
       //this.sliderElement.value!.disabled=!this.on;
-      console.info(`${fb.ApplicationId[this.applicationId]} recvs  ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
+      console.info(`${ApplicationId[this.applicationId]} recvs  ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value!.valueAsNumber})`);
     } else {
-      console.info(`${fb.ApplicationId[this.applicationId]} blocks ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value?.valueAsNumber})`);
+      console.info(`${ApplicationId[this.applicationId]} blocks ${state[3]} ${state[0] == 0 ? "OFF" : "ON"}(is: ${this.sliderElement.value?.valueAsNumber})`);
     }
   }
 
   private onslide() {
     this.lastUserInteraction = Date.now();
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}*${this.MULTIPLIER}`);
+    console.info(`${ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}*${this.MULTIPLIER}`);
     cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber*this.MULTIPLIER, this.ctx);
   }
   protected CoreAppHtmlTemplate = () => html`
@@ -331,7 +332,7 @@ export class SoundApplication extends SensactApplication {
   `
   private onBtnMute(_e: MouseEvent) {
     this.muted = !this.muted;
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  mute=${this.muted}`);
+    console.info(`${ApplicationId[this.applicationId]} sends  mute=${this.muted}`);
     if (this.muted) {
       cmd.SendOFFCommand(this.applicationId, 0, this.ctx);
     } else {
@@ -341,13 +342,13 @@ export class SoundApplication extends SensactApplication {
 
   private onBtnPlay(_e: MouseEvent) {
     const idx = (this.soundSelect.value?.selectedIndex ?? 0) + 1;
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  play song ${idx}!`);
+    console.info(`${ApplicationId[this.applicationId]} sends  play song ${idx}!`);
     cmd.SendSET_SIGNALCommand(this.applicationId, idx, this.ctx);
   }
 
   private onInputSlide() {
     this.lastUserInteraction = Date.now();
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}`);
+    console.info(`${ApplicationId[this.applicationId]} sends  ${this.sliderElement.value!.valueAsNumber}`);
     cmd.SendSET_VERTICAL_TARGETCommand(this.applicationId, this.sliderElement.value!.valueAsNumber, this.ctx);
   }
 
@@ -367,7 +368,7 @@ export class SoundApplication extends SensactApplication {
     cmd.SendSET_PARAMCommand(this.applicationId, 4, this.dayEndSlider.value!.valueAsNumber, this.ctx);
   }
   private onSave() {
-    console.info(`${fb.ApplicationId[this.applicationId]} sends  SAVE_PARAM`);
+    console.info(`${ApplicationId[this.applicationId]} sends  SAVE_PARAM`);
     cmd.SendSAVE_PARAMCommand(this.applicationId, this.ctx);
   }
 
@@ -392,6 +393,6 @@ export class SoundApplication extends SensactApplication {
     if (Date.now() - this.lastUserInteraction > 3000 && this.sliderElement.value) {//wenn 3 Sekunden keine User-Interaktion, dann den Slider auf den aktuellen Wert setzen
       this.sliderElement.value!.valueAsNumber = this.volume;
     }
-    console.info(`${fb.ApplicationId[this.applicationId]} recvs isPlaying:${this.isPlaying}, volume:${this.volume} muted:${this.muted}`);
+    console.info(`${ApplicationId[this.applicationId]} recvs isPlaying:${this.isPlaying}, volume:${this.volume} muted:${this.muted}`);
   }
 }

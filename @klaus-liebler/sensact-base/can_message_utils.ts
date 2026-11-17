@@ -1,6 +1,7 @@
 
 import { canmonitor, sensact } from "@generated/wsprotocol_ts/ws-protocol"
 import { uint8Array2HexString } from "@klaus-liebler/commons";
+import { ApplicationId } from "@generated/sensact_applicationids/applicationIds";
 
 export function canMessage2HexString(d: canmonitor.NotifyCanMessage.Payload) {
 	var s = "";
@@ -37,7 +38,7 @@ export class cCANMessageBuilderParserOld{
         for(var i=0; i<payloadLen;i++){
             arr[i]=m.data.data[i];
         }
-        var s= `Cmd ${sensact.Command[dc.commandId]} to ${sensact.ApplicationId[dc.destinationAppId]}; (0x${dc.commandId.toString(16)} to 0x${dc.destinationAppId.toString(16)}) with payload 0x${uint8Array2HexString(arr)}`
+        var s= `Cmd ${sensact.Command[dc.commandId]} to ${ApplicationId[dc.destinationAppId]}; (0x${dc.commandId.toString(16)} to 0x${dc.destinationAppId.toString(16)}) with payload 0x${uint8Array2HexString(arr)}`
         console.log(s);
         return s;
 
