@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "tsc --noEmit -p .",
+    "test": "tsc --noEmit -p ."
   },
   "author": "Klaus LIebler",
   "license": "ISC",
@@ -16,5 +17,8 @@
     "@klaus-liebler/svgs": "file:../svgs",
     "@klaus-liebler/web-components": "file:../web-components",
     "lit-html": "^3.2.1"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }
