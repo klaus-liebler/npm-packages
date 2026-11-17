@@ -8,4 +8,7 @@ export const WS_URL_ESP32_AP = "wss://192.168.4.1:443/webmanager_ws"
 export const WS_URL_ESP32_STA = "wss://labathome_6550c0/webmanager_ws"
 export const HOST_PREFIX_ESP32_STA = "https://labathome_6550c0"
 export const UPLOAD_URL=URL_PREFIX+"/ota";
+// Stationspaket (s. espidf-component-webmanager/cpp/station_package.hh)
+export const PACKAGE_UPLOAD_URL=URL_PREFIX+"/package";
+export const WEBUI_VERSION_URL=URL_PREFIX+"/webui/version";
 export const LABBY_URL = URL_PREFIX+"/labathome"

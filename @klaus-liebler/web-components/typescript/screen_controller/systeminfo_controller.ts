@@ -3,7 +3,7 @@ import { systeminfo } from "@generated/wsprotocol_ts/ws-protocol";
 
 import { ScreenController } from "./screen_controller";
 
-import { UPLOAD_URL } from "../utils/constants";
+import { UPLOAD_URL, PACKAGE_UPLOAD_URL } from "../utils/constants";
 
 import { findChipModel, findChipFeatures, subtypeToString, otaStateToString } from "../utils/esp32";
 import { html } from "lit-html";
@@ -16,6 +16,9 @@ import { MyFavouriteDateTimeFormat, Severity } from "@klaus-liebler/commons";
 
 export class SystemController extends ScreenController {
     private btnUpload:Ref<HTMLInputElement> = createRef();
+    private inpPackage:Ref<HTMLInputElement> = createRef();
+    private btnPackage:Ref<HTMLInputElement> = createRef();
+    private lblPackage:Ref<HTMLSpanElement> = createRef();
     private inpOtafile:Ref<HTMLInputElement> = createRef();
     private lblProgress:Ref<HTMLInputElement> = createRef();
     private prgbProgress:Ref<HTMLInputElement> = createRef();
@@ -132,6 +135,35 @@ export class SystemController extends ScreenController {
 
     }
 
+    // Stationspaket hochladen: das Geraet prueft, ob es zur Firmware passt, und schaltet erst
+    // danach um; anschliessend laedt sich die Seite mit der neuen Web-UI neu.
+    private startPackageUpload() {
+        const files = this.inpPackage.value!.files!;
+        if (files.length == 0) {
+            this.appManagement.ShowDialog(new OkDialog(Severity.WARN, "No file selected!"));
+            return;
+        }
+        this.btnPackage.value!.disabled = true;
+        this.lblPackage.value!.textContent = "Uploading...";
+        fetch(PACKAGE_UPLOAD_URL, { method: "POST", body: files[0] })
+            .then(async (response) => {
+                const text = await response.text();
+                if (response.ok) {
+                    this.lblPackage.value!.textContent = text + " - reloading...";
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    this.lblPackage.value!.textContent = "";
+                    this.btnPackage.value!.disabled = false;
+                    this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Package rejected: ${text}`));
+                }
+            })
+            .catch((e) => {
+                this.lblPackage.value!.textContent = "";
+                this.btnPackage.value!.disabled = false;
+                this.appManagement.ShowDialog(new OkDialog(Severity.ERROR, `Upload failed: ${e}`));
+            });
+    }
+
     OnCreate(): void {
         this.appManagement.RegisterNamespace(this, systeminfo.NAMESPACE_ID);
 
@@ -187,6 +219,23 @@ export class SystemController extends ScreenController {
 
 
         <h1 class="dangerous">Dangerous Zone</h1>
+        <h2>Station Package (web UI for this firmware)</h2>
+        <table>
+            <tbody>
+                <tr>
+                    <td>1.) Choose Package File</td>
+                    <td><input type="file" ${ref(this.inpPackage)} name="pkgfile" accept=".pkg"></td>
+                </tr>
+                <tr>
+                    <td>2.) Click!</td>
+                    <td><input @click=${()=>this.startPackageUpload()} ${ref(this.btnPackage)} type="button" value="Upload Station Package" /> <span ${ref(this.lblPackage)}></span></td>
+                </tr>
+                <tr>
+                    <td>Note</td>
+                    <td>The device accepts only packages built together with its firmware. After a firmware update with a changed house model, upload the matching package again.</td>
+                </tr>
+            </tbody>
+        </table>
         <h2>Over-the-air Firmware Update</h2>
         <table>
             <tbody>

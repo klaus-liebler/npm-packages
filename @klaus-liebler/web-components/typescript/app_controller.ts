@@ -12,6 +12,7 @@ import {ArrayBufferToHexString} from "@klaus-liebler/commons"
 import * as cfg from "@generated/runtimeconfig_ts"
 import { decodeError, FLAG_ERROR, HEADER_SIZE, readHeader } from "@generated/wsprotocol_ts/ws-protocol"
 import { HEADER_BACKGROUND_DATA_URL } from "./utils/header_background"
+import { WEBUI_VERSION_URL } from "./utils/constants"
 
 
 class Router2ContentAdapter implements IRouteHandler {
@@ -38,6 +39,31 @@ export class AppController implements IAppManagement, IScreenControllerHost {
   private reconnectTimeoutHandle: number = -1;
   private isCurrentlyDisconnected: boolean = false;
   private reconnectAttempts: number = 0;
+  // Version der geladenen Web-UI (Cookie "webui", vom Geraet beim Ausliefern gesetzt): "builtin"
+  // oder die Kennung aus dem Stationspaket. null = Geraet kennt keine Stationspakete.
+  private readonly loadedWebUiVersion: string | null = AppController.readCookie("webui");
+
+  private static readCookie(name: string): string | null {
+    const m = document.cookie.match(new RegExp("(?:^|;\\s*)" + name + "=([^;]*)"));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  // Nach jedem (Wieder-)Verbinden: hat das Geraet inzwischen eine andere Web-UI (neues
+  // Stationspaket hochgeladen, oder Paket nach einem Firmware-Update verworfen)? Dann neu laden.
+  private async reloadIfWebUiChanged() {
+    if (this.loadedWebUiVersion === null) return;
+    try {
+      const response = await fetch(WEBUI_VERSION_URL, { cache: "no-store" });
+      if (!response.ok) return;
+      const current = (await response.text()).trim();
+      if (current && current !== this.loadedWebUiVersion) {
+        console.info(`Web UI on the device changed (${this.loadedWebUiVersion} -> ${current}), reloading.`);
+        window.location.reload();
+      }
+    } catch (e) {
+      console.warn(`Web UI version check failed: ${e}`);
+    }
+  }
   private static readonly RECONNECT_INTERVAL_MS = 1500;
   // Sessions leben nur im RAM des Boards (s. webmanager_base.hh sessions[]) -- ein echter Reboot
   // (z.B. nach einem Neu-Flash) loescht sie komplett. Ein reiner Websocket-Reconnect wuerde dann
@@ -313,6 +339,7 @@ export class AppController implements IAppManagement, IScreenControllerHost {
     socket.onopen = (_event) => {
       console.log(`Websocket is connected.`)
       this.setModal(false);
+      void this.reloadIfWebUiChanged();
       this.reconnectAttempts = 0;
       if (this.isCurrentlyDisconnected) {
         this.isCurrentlyDisconnected = false;
